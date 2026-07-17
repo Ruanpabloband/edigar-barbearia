@@ -162,6 +162,12 @@ textarea:focus-visible {
     }
 }
 
+/* Normalize form input heights */
+#booking-form input,
+#booking-form select {
+    height: 48px;
+}
+
 /* Prevent zoom on input focus on iOS */
 @media screen and (max-width: 768px) {
     input[type="text"],
@@ -172,3 +178,5 @@ textarea:focus-visible {
         font-size: 16px;
     }
 }
+
+/* Hero image positioning */
