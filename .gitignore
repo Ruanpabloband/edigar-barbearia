@@ -25,3 +25,6 @@ Thumbs.db
 
 # Server data
 server/data/
+
+.vercel
+.env*

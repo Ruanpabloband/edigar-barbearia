@@ -1,6 +1,3 @@
-const fs = require('fs');
-const path = require('path');
-
 module.exports = async (req, res) => {
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,11 +18,11 @@ module.exports = async (req, res) => {
 
     // Basic validation
     if (!name || !message) {
-        return res.status(400).json({ error: 'Nome e mensagem sao obrigatorios.' });
+        return res.status(400).json({ error: 'Nome e mensagem são obrigatórios.' });
     }
 
     const newMessage = {
-        id: Date.now(),
+        id: crypto.randomUUID(),
         name,
         email: email || '',
         phone: phone || '',
@@ -33,8 +30,6 @@ module.exports = async (req, res) => {
         createdAt: new Date().toISOString()
     };
 
-    // For Vercel, we'll just return success
-    // In production, you would save to a database or send an email
     console.log('New contact message:', newMessage);
 
     return res.status(200).json({

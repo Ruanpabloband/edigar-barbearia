@@ -31,6 +31,12 @@ html {
     background: #c9952d;
 }
 
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #333 #0a0a0a;
+}
+
 /* Hero pattern */
 .hero-pattern {
     background-image:
@@ -88,6 +94,12 @@ html {
     opacity: 0;
 }
 
+/* Animate visible (for IntersectionObserver) */
+.animate-visible {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
 /* Header background on scroll */
 #header.scrolled {
     background: rgba(10, 10, 10, 0.95);
@@ -100,54 +112,18 @@ html {
     animation: slideDown 0.3s ease-out;
 }
 
-/* Card hover glow effect */
-.group:hover {
+/* Card hover glow effect (targeted) */
+#servicos .group:hover,
+#contato .group:hover {
     box-shadow: 0 0 30px rgba(201, 149, 45, 0.1);
-}
-
-/* Gold gradient text */
-.text-gold-gradient {
-    background: linear-gradient(135deg, #d4a853, #b8860b);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* Button shine effect */
-.btn-shine {
-    position: relative;
-    overflow: hidden;
-}
-
-.btn-shine::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-        to right,
-        transparent 0%,
-        rgba(255, 255, 255, 0.1) 50%,
-        transparent 100%
-    );
-    transform: rotate(45deg);
-    animation: shine 3s infinite;
-}
-
-@keyframes shine {
-    0% {
-        transform: translateX(-100%) rotate(45deg);
-    }
-    100% {
-        transform: translateX(100%) rotate(45deg);
-    }
 }
 
 /* Focus styles for accessibility */
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
     outline: 2px solid #c9952d;
     outline-offset: 2px;
 }
@@ -167,44 +143,12 @@ button:focus-visible {
     }
 }
 
-/* ============================================
-   Responsive Improvements
-   ============================================ */
-
-/* Small phones (320px - 360px) */
-@media (max-width: 360px) {
-    .hero-pattern {
-        opacity: 0.05;
-    }
-}
-
-/* Tablets (768px - 1024px) */
-@media (min-width: 768px) and (max-width: 1024px) {
-    .group:hover {
-        box-shadow: 0 0 20px rgba(201, 149, 45, 0.08);
-    }
-}
-
-/* Touch devices - remove hover effects that don't work well */
+/* Touch devices - remove hover transforms */
 @media (hover: none) {
     .group:hover {
         transform: none;
-    }
-
-    .group:hover {
         box-shadow: none;
     }
-}
-
-/* Improve form inputs on mobile */
-input[type="date"],
-input[type="tel"],
-input[type="text"],
-textarea,
-select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
 }
 
 /* Prevent zoom on input focus on iOS */
