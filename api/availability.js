@@ -6,7 +6,11 @@ const redis = new Redis({
 });
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin || '';
+    const allowed = ['https://edigar-barbearia.vercel.app', 'https://landingpage-eight-navy-89.vercel.app'];
+    if (allowed.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
