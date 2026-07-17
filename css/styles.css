@@ -179,4 +179,16 @@ textarea:focus-visible {
     }
 }
 
+/* Form overflow prevention */
+#booking-form {
+    overflow: hidden;
+}
+
+#booking-form input,
+#booking-form select,
+#booking-form textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
 /* Hero image positioning */
