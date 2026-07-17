@@ -243,16 +243,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookingForm = document.getElementById('booking-form');
     if (bookingForm) {
 
-        // Set min date to today
+        // Set min date to today (local time, not UTC)
         const dateInput = document.getElementById('date');
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         dateInput.setAttribute('min', todayStr);
 
-        // Set max date to 30 days from now
+        // Set max date to 30 days from now (local time)
         const maxDate = new Date();
         maxDate.setDate(maxDate.getDate() + 30);
-        dateInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
+        const maxDateStr = `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+        dateInput.setAttribute('max', maxDateStr);
 
         // Time slots from API
         const timeSelect = document.getElementById('time');
