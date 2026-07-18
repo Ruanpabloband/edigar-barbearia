@@ -202,6 +202,8 @@
                 sessionStorage.removeItem('admin_lock');
                 sessionStorage.setItem('admin_password', password);
 
+                loginScreen.classList.add('hidden');
+                dashboard.classList.remove('hidden');
                 renderDashboard(data);
             } catch {
                 loginError.textContent = 'Erro de conexão.';
