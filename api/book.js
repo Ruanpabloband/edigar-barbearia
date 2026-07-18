@@ -75,6 +75,7 @@ export default async function handler(req, res) {
             name: name.substring(0, 100),
             phone: phone.substring(0, 20),
             service: service.substring(0, 50),
+            status: 'pending',
             bookedAt: Date.now()
         }, { nx: true, ex: 172800 });
 

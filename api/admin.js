@@ -56,54 +56,57 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Dados inválidos.' });
     }
 
-    const { password } = body || {};
+    const { password, date: reqDate, search } = body || {};
+    const targetDate = reqDate || new Date().toISOString().split('T')[0];
 
     if (!password || password !== process.env.ADMIN_PASSWORD) {
         return res.status(401).json({ error: 'Senha incorreta.' });
     }
 
     try {
-        const dates = await redis.smembers('booked_dates');
+        const keys = await redis.keys(`slot:${targetDate}:*`);
+        const prefix = `slot:${targetDate}:`;
         const bookings = [];
+        let totalRevenue = 0;
 
-        for (const date of dates) {
-            const keys = await redis.keys(`slot:${date}:*`);
-            const prefix = `slot:${date}:`;
+        if (keys.length === 0) {
+            await redis.srem('booked_dates', targetDate).catch(() => {});
+        }
 
-            if (keys.length === 0) {
-                await redis.srem('booked_dates', date).catch(() => {});
-                continue;
-            }
+        for (const key of keys) {
+            const time = key.replace(prefix, '');
+            const data = await redis.get(key);
 
-            for (const key of keys) {
-                const time = key.replace(prefix, '');
-                const data = await redis.get(key);
+            if (data && data.status !== 'cancelled') {
+                const price = SERVICES[data.service] || 0;
+                const matchSearch = !search ||
+                    (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                    (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
 
-                if (data) {
-                    const price = SERVICES[data.service] || 0;
+                if (matchSearch) {
                     bookings.push({
-                        date,
+                        date: targetDate,
                         time,
                         service: data.service,
                         name: data.name,
                         phone: data.phone,
                         price,
+                        status: data.status,
                         bookedAt: data.bookedAt
                     });
+                    totalRevenue += price;
                 }
             }
         }
 
-        bookings.sort((a, b) => {
-            if (a.date !== b.date) return b.date.localeCompare(a.date);
-            return b.time.localeCompare(a.time);
-        });
+        bookings.sort((a, b) => a.time.localeCompare(b.time));
 
         return res.status(200).json({
             success: true,
+            today: targetDate,
             bookings,
             totalBookings: bookings.length,
-            totalRevenue: bookings.reduce((sum, b) => sum + b.price, 0)
+            totalRevenue
         });
     } catch (error) {
         console.error('Erro ao buscar dados admin:', error.message);

@@ -445,4 +445,146 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ========================================
+    // My Bookings (agendamento.html)
+    // ========================================
+    const myBookingsBtn = document.getElementById('my-bookings-btn');
+    const myPhoneInput = document.getElementById('my-phone');
+    const myBookingsLoading = document.getElementById('my-bookings-loading');
+    const myBookingsEmpty = document.getElementById('my-bookings-empty');
+    const myBookingsError = document.getElementById('my-bookings-error');
+    const myBookingsList = document.getElementById('my-bookings-list');
+
+    if (myBookingsBtn && myPhoneInput) {
+        myPhoneInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            if (value.length > 6) {
+                value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
+            } else if (value.length > 2) {
+                value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+            } else if (value.length > 0) {
+                value = `(${value}`;
+            }
+            e.target.value = value;
+        });
+
+        myBookingsBtn.addEventListener('click', () => loadMyBookings());
+        myPhoneInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') loadMyBookings();
+        });
+    }
+
+    async function loadMyBookings() {
+        const phone = myPhoneInput.value.trim();
+        if (!phone || phone.replace(/\D/g, '').length < 10) {
+            myBookingsError.textContent = 'Digite um telefone válido.';
+            myBookingsError.classList.remove('hidden');
+            return;
+        }
+
+        myBookingsLoading.classList.remove('hidden');
+        myBookingsEmpty.classList.add('hidden');
+        myBookingsError.classList.add('hidden');
+        myBookingsList.classList.add('hidden');
+
+        try {
+            const res = await fetch(`/api/my-bookings?phone=${encodeURIComponent(phone)}`);
+            const data = await res.json();
+
+            myBookingsLoading.classList.add('hidden');
+
+            if (!res.ok) {
+                myBookingsError.textContent = data.error || 'Erro ao buscar reservas.';
+                myBookingsError.classList.remove('hidden');
+                return;
+            }
+
+            if (data.bookings.length === 0) {
+                myBookingsEmpty.classList.remove('hidden');
+                return;
+            }
+
+            renderMyBookings(data.bookings);
+        } catch {
+            myBookingsLoading.classList.add('hidden');
+            myBookingsError.textContent = 'Erro de conexão. Tente novamente.';
+            myBookingsError.classList.remove('hidden');
+        }
+    }
+
+    function renderMyBookings(bookings) {
+        myBookingsList.innerHTML = '';
+        myBookingsList.classList.remove('hidden');
+
+        bookings.forEach(b => {
+            const dateObj = new Date(b.date + 'T12:00:00');
+            const dateFormatted = dateObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+
+            const card = document.createElement('div');
+            card.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-dark-700 border border-dark-600 rounded-sm p-4';
+
+            const info = document.createElement('div');
+            info.className = 'flex-1';
+
+            const dateLine = document.createElement('p');
+            dateLine.className = 'text-white font-medium text-sm';
+            dateLine.textContent = `${dateFormatted} às ${b.time}`;
+
+            const serviceLine = document.createElement('p');
+            serviceLine.className = 'text-gray-400 text-xs mt-1';
+            serviceLine.textContent = b.service;
+
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'inline-block mt-2 px-2 py-0.5 rounded-sm text-xs font-medium';
+            if (b.status === 'pending') {
+                statusSpan.className += ' bg-yellow-900/50 text-yellow-300';
+                statusSpan.textContent = 'Aguardando confirmação';
+            } else {
+                statusSpan.className += ' bg-green-900/50 text-green-300';
+                statusSpan.textContent = 'Confirmado';
+            }
+
+            info.appendChild(dateLine);
+            info.appendChild(serviceLine);
+            info.appendChild(statusSpan);
+
+            const actions = document.createElement('div');
+
+            if (b.status === 'pending' || b.status === 'confirmed') {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'bg-red-900/50 text-red-300 px-4 py-2 rounded-sm text-xs font-medium hover:bg-red-900 transition-colors';
+                cancelBtn.textContent = 'Cancelar';
+                cancelBtn.addEventListener('click', () => cancelMyBooking(b.date, b.time, b.name, myPhoneInput.value.trim()));
+                actions.appendChild(cancelBtn);
+            }
+
+            card.appendChild(info);
+            card.appendChild(actions);
+            myBookingsList.appendChild(card);
+        });
+    }
+
+    async function cancelMyBooking(date, time, name, phone) {
+        if (!confirm(`Cancelar seu agendamento (${name}) às ${time}?`)) return;
+
+        try {
+            const res = await fetch('/api/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date, time, phone })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                loadMyBookings();
+            } else {
+                alert(data.error || 'Erro ao cancelar.');
+            }
+        } catch {
+            alert('Erro de conexão.');
+        }
+    }
+
 });
