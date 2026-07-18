@@ -84,7 +84,7 @@ export default async function handler(req, res) {
             totalRevenue
         });
     } catch (error) {
-        console.error('Erro ao buscar dados admin:', error.message);
-        return res.status(500).json({ error: 'Erro ao carregar dados.' });
+        console.error('Erro ao buscar dados admin:', error.message, error.stack);
+        return res.status(500).json({ error: 'Erro ao carregar dados.', detail: error.message });
     }
 }
