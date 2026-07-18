@@ -41,19 +41,14 @@ export default async function handler(req, res) {
     try {
         const dates = await redis.smembers('booked_dates');
         const bookings = [];
-        const debug = [];
 
         for (const date of dates) {
             const keys = await redis.keys(`slot:${date}:*`);
-            debug.push({ date, keyCount: keys.length, keys });
+            const prefix = `slot:${date}:`;
 
             for (const key of keys) {
-                const parts = key.split(':');
-                if (parts.length !== 3) continue;
-
-                const time = parts[2];
+                const time = key.replace(prefix, '');
                 const data = await redis.get(key);
-                debug.push({ key, data });
 
                 if (data) {
                     const price = SERVICES[data.service] || 0;
@@ -79,8 +74,7 @@ export default async function handler(req, res) {
             success: true,
             bookings,
             totalBookings: bookings.length,
-            totalRevenue: bookings.reduce((sum, b) => sum + b.price, 0),
-            debug
+            totalRevenue: bookings.reduce((sum, b) => sum + b.price, 0)
         });
     } catch (error) {
         console.error('Erro ao buscar dados admin:', error.message);
