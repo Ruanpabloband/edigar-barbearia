@@ -42,39 +42,27 @@ export default async function handler(req, res) {
         const dates = await redis.smembers('booked_dates');
         const bookings = [];
 
-        if (dates.length > 0) {
-            const slotArrays = await Promise.all(
-                dates.map(d => redis.keys(`slot:${d}:*`).catch(e => { console.error('keys error:', e.message); return []; }))
-            );
+        for (const date of dates) {
+            const keys = await redis.keys(`slot:${date}:*`);
 
-            const debugKeys = {};
-            for (let d = 0; d < dates.length; d++) {
-                debugKeys[dates[d]] = slotArrays[d];
-            }
+            for (const key of keys) {
+                const parts = key.split(':');
+                if (parts.length !== 3) continue;
 
-            for (let d = 0; d < dates.length; d++) {
-                const date = dates[d];
-                const keys = slotArrays[d];
+                const time = parts[2];
+                const data = await redis.get(key);
 
-                for (let i = 0; i < keys.length; i++) {
-                    const parts = keys[i].split(':');
-                    if (parts.length !== 3) continue;
-
-                    const time = parts[2];
-                    const data = await redis.get(keys[i]).catch(() => null);
-
-                    if (data) {
-                        const price = SERVICES[data.service] || 0;
-                        bookings.push({
-                            date,
-                            time,
-                            service: data.service,
-                            name: data.name,
-                            phone: data.phone,
-                            price,
-                            bookedAt: data.bookedAt
-                        });
-                    }
+                if (data) {
+                    const price = SERVICES[data.service] || 0;
+                    bookings.push({
+                        date,
+                        time,
+                        service: data.service,
+                        name: data.name,
+                        phone: data.phone,
+                        price,
+                        bookedAt: data.bookedAt
+                    });
                 }
             }
         }
@@ -88,9 +76,7 @@ export default async function handler(req, res) {
             success: true,
             bookings,
             totalBookings: bookings.length,
-            totalRevenue: bookings.reduce((sum, b) => sum + b.price, 0),
-            debugDates: dates,
-            debugKeys
+            totalRevenue: bookings.reduce((sum, b) => sum + b.price, 0)
         });
     } catch (error) {
         console.error('Erro ao buscar dados admin:', error.message);
