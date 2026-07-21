@@ -265,6 +265,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookingForm = document.getElementById('booking-form');
     if (bookingForm) {
 
+        fetchHours();
+
         // Set min date to today (local time, not UTC)
         const dateInput = document.getElementById('date');
         const today = new Date();
@@ -280,23 +282,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // Time slots from API
         const timeSelect = document.getElementById('time');
         let allSlots = [];
+        let businessHours = null;
+
+        const fetchHours = async () => {
+            try {
+                const res = await fetch('/api/hours');
+                const data = await res.json();
+                if (data.success) businessHours = data.hours;
+            } catch {}
+        };
 
         const generateAllSlots = (dayOfWeek) => {
             const slots = [];
-            let startHour, endHour;
+            const hours = businessHours || { 0: null, 1: { start: 9, end: 20 }, 2: { start: 9, end: 20 }, 3: { start: 9, end: 20 }, 4: { start: 9, end: 20 }, 5: { start: 9, end: 20 }, 6: { start: 9, end: 18 } };
+            const dayHours = hours[dayOfWeek];
+            if (!dayHours) return slots;
 
-            if (dayOfWeek === 0) return slots;
-            if (dayOfWeek === 6) {
-                startHour = 9;
-                endHour = 18;
-            } else {
-                startHour = 9;
-                endHour = 20;
-            }
-
-            for (let h = startHour; h <= endHour; h++) {
+            for (let h = dayHours.start; h <= dayHours.end; h++) {
                 for (let m = 0; m < 60; m += 30) {
-                    if (h === endHour && m > 0) break;
+                    if (h === dayHours.end && m > 0) break;
                     slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
                 }
             }

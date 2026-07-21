@@ -1,6 +1,6 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, validateDate, validateTime, getClientDate } from './_lib/shared.js';
 
-const HOURS = {
+const DEFAULT_HOURS = {
     0: null,
     1: { start: 9, end: 20 },
     2: { start: 9, end: 20 },
@@ -10,13 +10,20 @@ const HOURS = {
     6: { start: 9, end: 18 }
 };
 
-function isSlotWithinHours(dateStr, timeStr) {
+async function isSlotWithinHours(dateStr, timeStr) {
     const [h] = timeStr.split(':').map(Number);
     const date = new Date(dateStr + 'T12:00:00');
     const day = date.getDay();
-    const hours = HOURS[day];
-    if (!hours) return false;
-    return h >= hours.start && h < hours.end;
+    let hours;
+    try {
+        hours = await redis.get('business_hours');
+        hours = hours || DEFAULT_HOURS;
+    } catch {
+        hours = DEFAULT_HOURS;
+    }
+    const dayHours = hours[day];
+    if (!dayHours) return false;
+    return h >= dayHours.start && h < dayHours.end;
 }
 
 export default async function handler(req, res) {
@@ -56,7 +63,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Serviço inválido.' });
     }
 
-    if (!isSlotWithinHours(date, time)) {
+    if (!await isSlotWithinHours(date, time)) {
         return res.status(400).json({ error: 'Horário fora do expediente.' });
     }
 

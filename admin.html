@@ -131,6 +131,137 @@
                 </div>
             </div>
 
+            <!-- Resumo Financeiro -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                <div class="bg-dark-800 border border-dark-600 rounded-sm p-4">
+                    <p class="text-gray-400 text-xs mb-1">Receita</p>
+                    <p id="fin-revenue" class="font-heading text-xl font-bold text-green-400">R$ 0</p>
+                </div>
+                <div class="bg-dark-800 border border-dark-600 rounded-sm p-4">
+                    <p class="text-gray-400 text-xs mb-1">Despesas</p>
+                    <p id="fin-expenses" class="font-heading text-xl font-bold text-red-400">R$ 0</p>
+                </div>
+                <div class="bg-dark-800 border border-dark-600 rounded-sm p-4">
+                    <p class="text-gray-400 text-xs mb-1">Lucro Líquido</p>
+                    <p id="fin-profit" class="font-heading text-xl font-bold text-gold-500">R$ 0</p>
+                </div>
+            </div>
+
+            <!-- Gerenciar Despesas -->
+            <div class="bg-dark-800 border border-dark-600 rounded-sm p-4 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-heading text-lg font-semibold">Despesas</h3>
+                    <button id="toggle-expense-form" class="bg-dark-700 text-gray-300 px-4 py-2 rounded-sm text-sm font-medium hover:bg-dark-600 transition-colors">+ Nova Despesa</button>
+                </div>
+
+                <div id="expense-form" class="hidden mb-4 bg-dark-700 border border-dark-600 rounded-sm p-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Descrição</label>
+                            <input type="text" id="expense-desc" placeholder="Ex: Aluguel, Produtos..." class="w-full bg-dark-900 border border-dark-600 rounded-sm px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gold-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Valor (R$)</label>
+                            <input type="number" id="expense-amount" step="0.01" min="0" placeholder="0.00" class="w-full bg-dark-900 border border-dark-600 rounded-sm px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gold-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Categoria</label>
+                            <select id="expense-category" class="w-full bg-dark-900 border border-dark-600 rounded-sm px-3 py-2 text-sm text-white focus:outline-none focus:border-gold-500 appearance-none cursor-pointer">
+                                <option value="Aluguel">Aluguel</option>
+                                <option value="Produtos">Produtos</option>
+                                <option value="Funcionários">Funcionários</option>
+                                <option value="Equipamentos">Equipamentos</option>
+                                <option value="Utilidades">Utilidades</option>
+                                <option value="Outros" selected>Outros</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Data</label>
+                            <input type="date" id="expense-date" class="w-full bg-dark-900 border border-dark-600 rounded-sm px-3 py-2 text-sm text-white focus:outline-none focus:border-gold-500">
+                        </div>
+                    </div>
+                    <div id="expense-form-error" class="hidden text-red-400 text-sm mb-2"></div>
+                    <button id="save-expense-btn" class="bg-gold-500 text-dark-900 px-4 py-2 rounded-sm text-sm font-semibold hover:bg-gold-400 transition-colors">Salvar</button>
+                </div>
+
+                <div id="expenses-list" class="space-y-2"></div>
+                <div id="expenses-empty" class="hidden text-center py-6 text-gray-500 text-sm">Nenhuma despesa registrada neste mês.</div>
+            </div>
+
+            <!-- Horário de Funcionamento -->
+            <div class="bg-dark-800 border border-dark-600 rounded-sm p-4 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-heading text-lg font-semibold">Horário de Funcionamento</h3>
+                    <button id="toggle-hours-form" class="bg-dark-700 text-gray-300 px-4 py-2 rounded-sm text-sm font-medium hover:bg-dark-600 transition-colors">Editar</button>
+                </div>
+                <div id="hours-view" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <div class="flex justify-between bg-dark-700 rounded-sm px-3 py-2"><span class="text-gray-400">Segunda</span><span id="h-1" class="text-white">09:00 - 20:00</span></div>
+                    <div class="flex justify-between bg-dark-700 rounded-sm px-3 py-2"><span class="text-gray-400">Terça</span><span id="h-2" class="text-white">09:00 - 20:00</span></div>
+                    <div class="flex justify-between bg-dark-700 rounded-sm px-3 py-2"><span class="text-gray-400">Quarta</span><span id="h-3" class="text-white">09:00 - 20:00</span></div>
+                    <div class="flex justify-between bg-dark-700 rounded-sm px-3 py-2"><span class="text-gray-400">Quinta</span><span id="h-4" class="text-white">09:00 - 20:00</span></div>
+                    <div class="flex justify-between bg-dark-700 rounded-sm px-3 py-2"><span class="text-gray-400">Sexta</span><span id="h-5" class="text-white">09:00 - 20:00</span></div>
+                    <div class="flex justify-between bg-dark-700 rounded-sm px-3 py-2"><span class="text-gray-400">Sábado</span><span id="h-6" class="text-white">09:00 - 18:00</span></div>
+                    <div class="flex justify-between bg-dark-700 rounded-sm px-3 py-2"><span class="text-gray-400">Domingo</span><span id="h-0" class="text-gray-500">Fechado</span></div>
+                </div>
+                <div id="hours-form" class="hidden mt-4 space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                            <span class="text-gray-400 text-sm w-20">Segunda</span>
+                            <input type="time" id="he-1-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <span class="text-gray-500">-</span>
+                            <input type="time" id="he-1-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-1" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
+                        </div>
+                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                            <span class="text-gray-400 text-sm w-20">Terça</span>
+                            <input type="time" id="he-2-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <span class="text-gray-500">-</span>
+                            <input type="time" id="he-2-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-2" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
+                        </div>
+                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                            <span class="text-gray-400 text-sm w-20">Quarta</span>
+                            <input type="time" id="he-3-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <span class="text-gray-500">-</span>
+                            <input type="time" id="he-3-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-3" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
+                        </div>
+                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                            <span class="text-gray-400 text-sm w-20">Quinta</span>
+                            <input type="time" id="he-4-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <span class="text-gray-500">-</span>
+                            <input type="time" id="he-4-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-4" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
+                        </div>
+                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                            <span class="text-gray-400 text-sm w-20">Sexta</span>
+                            <input type="time" id="he-5-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <span class="text-gray-500">-</span>
+                            <input type="time" id="he-5-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-5" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
+                        </div>
+                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                            <span class="text-gray-400 text-sm w-20">Sábado</span>
+                            <input type="time" id="he-6-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <span class="text-gray-500">-</span>
+                            <input type="time" id="he-6-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
+                            <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-6" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
+                        </div>
+                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                            <span class="text-gray-400 text-sm w-20">Domingo</span>
+                            <input type="time" id="he-0-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500" disabled>
+                            <span class="text-gray-500">-</span>
+                            <input type="time" id="he-0-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500" disabled>
+                            <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-0" checked disabled class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
+                        </div>
+                    </div>
+                    <div id="hours-form-error" class="hidden text-red-400 text-sm"></div>
+                    <button id="save-hours-btn" class="bg-gold-500 text-dark-900 px-4 py-2 rounded-sm text-sm font-semibold hover:bg-gold-400 transition-colors">Salvar Horários</button>
+                </div>
+            </div>
+
             <!-- Navegador de Data -->
             <div class="bg-dark-800 border border-dark-600 rounded-sm p-4 mb-6 flex flex-col sm:flex-row items-center gap-4">
                 <div class="flex items-center gap-2">
@@ -262,6 +393,22 @@
         const bestClientVisits = document.getElementById('best-client-visits');
         const bestClientSpend = document.getElementById('best-client-spend');
         const bestClientWa = document.getElementById('best-client-wa');
+        const finRevenue = document.getElementById('fin-revenue');
+        const finExpenses = document.getElementById('fin-expenses');
+        const finProfit = document.getElementById('fin-profit');
+        const toggleExpenseForm = document.getElementById('toggle-expense-form');
+        const expenseForm = document.getElementById('expense-form');
+        const expenseDesc = document.getElementById('expense-desc');
+        const expenseAmount = document.getElementById('expense-amount');
+        const expenseCategory = document.getElementById('expense-category');
+        const expenseDate = document.getElementById('expense-date');
+        const expenseFormError = document.getElementById('expense-form-error');
+        const saveExpenseBtn = document.getElementById('save-expense-btn');
+        const expensesList = document.getElementById('expenses-list');
+        const expensesEmpty = document.getElementById('expenses-empty');
+
+        const todayStr = getDateStr(new Date());
+        expenseDate.value = todayStr;
 
         function updateClock() {
             const now = new Date();
@@ -386,7 +533,8 @@
                 });
                 btn.classList.remove('bg-dark-700', 'text-gray-300');
                 btn.classList.add('bg-gold-500', 'text-dark-900');
-                renderTable();
+            renderTable();
+            loadExpenses();
             });
         });
 
@@ -784,6 +932,272 @@
                 alert('Erro de conexão.');
             }
         }
+
+        toggleExpenseForm.addEventListener('click', () => {
+            expenseForm.classList.toggle('hidden');
+            expenseFormError.classList.add('hidden');
+        });
+
+        async function loadExpenses() {
+            if (viewMode !== 'monthly') {
+                expensesList.innerHTML = '';
+                expensesEmpty.classList.remove('hidden');
+                finRevenue.textContent = `R$ ${(allBookings.reduce((s, b) => s + (b.price || 0), 0)).toFixed(2)}`;
+                finExpenses.textContent = 'R$ 0,00';
+                finProfit.textContent = `R$ ${(allBookings.reduce((s, b) => s + (b.price || 0), 0)).toFixed(2)}`;
+                return;
+            }
+            try {
+                const res = await fetch(`/api/expenses?token=${sessionToken}&month=${selectedMonth}`);
+                const data = await res.json();
+                if (!res.ok) return;
+
+                const revenue = allBookings.reduce((s, b) => s + (b.price || 0), 0);
+                const totalExpenses = data.totalExpenses || 0;
+                finRevenue.textContent = `R$ ${revenue.toFixed(2)}`;
+                finExpenses.textContent = `R$ ${totalExpenses.toFixed(2)}`;
+                finProfit.textContent = `R$ ${(revenue - totalExpenses).toFixed(2)}`;
+                finProfit.className = `font-heading text-xl font-bold ${(revenue - totalExpenses) >= 0 ? 'text-gold-500' : 'text-red-400'}`;
+
+                expensesList.innerHTML = '';
+                if (!data.expenses || data.expenses.length === 0) {
+                    expensesEmpty.classList.remove('hidden');
+                    return;
+                }
+                expensesEmpty.classList.add('hidden');
+
+                data.expenses.forEach(exp => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center justify-between bg-dark-700 border border-dark-600 rounded-sm p-3';
+
+                    const info = document.createElement('div');
+                    info.className = 'flex-1';
+                    const desc = document.createElement('p');
+                    desc.className = 'text-white text-sm font-medium';
+                    desc.textContent = exp.description;
+                    const meta = document.createElement('p');
+                    meta.className = 'text-gray-500 text-xs mt-1';
+                    meta.textContent = `${exp.category} — ${exp.date}`;
+                    info.appendChild(desc);
+                    info.appendChild(meta);
+
+                    const right = document.createElement('div');
+                    right.className = 'flex items-center gap-3';
+                    const val = document.createElement('span');
+                    val.className = 'text-red-400 font-semibold text-sm';
+                    val.textContent = `-R$ ${exp.amount.toFixed(2)}`;
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'text-gray-500 hover:text-red-400 text-xs transition-colors';
+                    delBtn.textContent = 'Excluir';
+                    delBtn.addEventListener('click', () => deleteExpense(exp.id, exp.month || selectedMonth));
+                    right.appendChild(val);
+                    right.appendChild(delBtn);
+
+                    div.appendChild(info);
+                    div.appendChild(right);
+                    expensesList.appendChild(div);
+                });
+            } catch {}
+        }
+
+        saveExpenseBtn.addEventListener('click', async () => {
+            const desc = expenseDesc.value.trim();
+            const amount = parseFloat(expenseAmount.value);
+            const category = expenseCategory.value;
+            const date = expenseDate.value;
+
+            if (!desc || !amount || !date) {
+                expenseFormError.textContent = 'Preencha todos os campos.';
+                expenseFormError.classList.remove('hidden');
+                return;
+            }
+
+            expenseFormError.classList.add('hidden');
+            saveExpenseBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/expenses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: sessionToken, description: desc, amount, category, date })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    expenseDesc.value = '';
+                    expenseAmount.value = '';
+                    expenseDate.value = '';
+                    expenseForm.classList.add('hidden');
+                    loadExpenses();
+                } else {
+                    expenseFormError.textContent = data.error || 'Erro ao salvar.';
+                    expenseFormError.classList.remove('hidden');
+                }
+            } catch {
+                expenseFormError.textContent = 'Erro de conexão.';
+                expenseFormError.classList.remove('hidden');
+            } finally {
+                saveExpenseBtn.disabled = false;
+            }
+        });
+
+        async function deleteExpense(id, month) {
+            if (!confirm('Excluir esta despesa?')) return;
+            try {
+                const res = await fetch('/api/expenses', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: sessionToken, id, month })
+                });
+                if (res.ok) loadExpenses();
+            } catch {}
+        }
+
+        // --- Horários de Funcionamento ---
+        const toggleHoursForm = document.getElementById('toggle-hours-form');
+        const hoursForm = document.getElementById('hours-form');
+        const hoursView = document.getElementById('hours-view');
+        const hoursFormError = document.getElementById('hours-form-error');
+        const saveHoursBtn = document.getElementById('save-hours-btn');
+        const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        let currentHours = null;
+
+        function renderHoursView(hours) {
+            const defaults = { 0: null, 1: { start: 9, end: 20 }, 2: { start: 9, end: 20 }, 3: { start: 9, end: 20 }, 4: { start: 9, end: 20 }, 5: { start: 9, end: 20 }, 6: { start: 9, end: 18 } };
+            const h = hours || defaults;
+            for (let day = 0; day <= 6; day++) {
+                const el = document.getElementById(`h-${day}`);
+                const d = h[day];
+                if (d) {
+                    el.textContent = `${String(d.start).padStart(2, '0')}:00 - ${String(d.end).padStart(2, '0')}:00`;
+                    el.className = 'text-white';
+                } else {
+                    el.textContent = 'Fechado';
+                    el.className = 'text-gray-500';
+                }
+            }
+        }
+
+        function loadFormValues(hours) {
+            const defaults = { 0: null, 1: { start: 9, end: 20 }, 2: { start: 9, end: 20 }, 3: { start: 9, end: 20 }, 4: { start: 9, end: 20 }, 5: { start: 9, end: 20 }, 6: { start: 9, end: 18 } };
+            const h = hours || defaults;
+            for (let day = 0; day <= 6; day++) {
+                const startEl = document.getElementById(`he-${day}-start`);
+                const endEl = document.getElementById(`he-${day}-end`);
+                const closedEl = document.getElementById(`hc-${day}`);
+                if (day === 0) {
+                    closedEl.checked = true;
+                    startEl.disabled = true;
+                    endEl.disabled = true;
+                    continue;
+                }
+                const d = h[day];
+                if (d) {
+                    startEl.value = `${String(d.start).padStart(2, '0')}:00`;
+                    endEl.value = `${String(d.end).padStart(2, '0')}:00`;
+                    closedEl.checked = false;
+                    startEl.disabled = false;
+                    endEl.disabled = false;
+                } else {
+                    closedEl.checked = true;
+                    startEl.disabled = true;
+                    endEl.disabled = true;
+                }
+            }
+        }
+
+        async function fetchAndShowHours() {
+            try {
+                const res = await fetch('/api/hours');
+                const data = await res.json();
+                currentHours = data.success ? data.hours : null;
+                renderHoursView(currentHours);
+            } catch {
+                renderHoursView(null);
+            }
+        }
+
+        toggleHoursForm.addEventListener('click', () => {
+            const isHidden = hoursForm.classList.contains('hidden');
+            if (isHidden) {
+                loadFormValues(currentHours);
+                hoursView.classList.add('hidden');
+                hoursForm.classList.remove('hidden');
+                toggleHoursForm.textContent = 'Cancelar';
+                hoursFormError.classList.add('hidden');
+            } else {
+                hoursView.classList.remove('hidden');
+                hoursForm.classList.add('hidden');
+                toggleHoursForm.textContent = 'Editar';
+            }
+        });
+
+        for (let day = 0; day <= 6; day++) {
+            if (day === 0) continue;
+            const closedEl = document.getElementById(`hc-${day}`);
+            const startEl = document.getElementById(`he-${day}-start`);
+            const endEl = document.getElementById(`he-${day}-end`);
+            closedEl.addEventListener('change', () => {
+                startEl.disabled = closedEl.checked;
+                endEl.disabled = closedEl.checked;
+            });
+        }
+
+        saveHoursBtn.addEventListener('click', async () => {
+            hoursFormError.classList.add('hidden');
+            const hours = {};
+            for (let day = 0; day <= 6; day++) {
+                const closedEl = document.getElementById(`hc-${day}`);
+                if (closedEl.checked || day === 0) {
+                    hours[day] = null;
+                    continue;
+                }
+                const startEl = document.getElementById(`he-${day}-start`);
+                const endEl = document.getElementById(`he-${day}-end`);
+                if (!startEl.value || !endEl.value) {
+                    hoursFormError.textContent = 'Preencha os horários de todos os dias abertos.';
+                    hoursFormError.classList.remove('hidden');
+                    return;
+                }
+                const startH = parseInt(startEl.value.split(':')[0]);
+                const startM = parseInt(startEl.value.split(':')[1]);
+                const endH = parseInt(endEl.value.split(':')[0]);
+                const endM = parseInt(endEl.value.split(':')[1]);
+                if (startH >= endH) {
+                    hoursFormError.textContent = `Horário de abertura deve ser antes do fechamento (${DAY_NAMES[day]}).`;
+                    hoursFormError.classList.remove('hidden');
+                    return;
+                }
+                hours[day] = { start: startH + startM / 60, end: endH + endM / 60 };
+            }
+
+            saveHoursBtn.disabled = true;
+            try {
+                const res = await fetch('/api/hours', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: sessionToken, hours })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    currentHours = data.hours;
+                    renderHoursView(currentHours);
+                    hoursView.classList.remove('hidden');
+                    hoursForm.classList.add('hidden');
+                    toggleHoursForm.textContent = 'Editar';
+                } else {
+                    hoursFormError.textContent = data.error || 'Erro ao salvar.';
+                    hoursFormError.classList.remove('hidden');
+                }
+            } catch {
+                hoursFormError.textContent = 'Erro de conexão.';
+                hoursFormError.classList.remove('hidden');
+            } finally {
+                saveHoursBtn.disabled = false;
+            }
+        });
+
+        fetchAndShowHours();
     })();
     </script>
 </body>
