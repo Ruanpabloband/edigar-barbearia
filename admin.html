@@ -37,6 +37,7 @@
         .status-pending { background: #713f12; color: #fde68a; }
         .status-confirmed { background: #14532d; color: #bbf7d0; }
         .status-cancelled { background: #450a0a; color: #fca5a5; text-decoration: line-through; }
+        .status-blocked { background: #1e3a5f; color: #93c5fd; }
     </style>
 </head>
 <body class="bg-dark-900 text-white font-body antialiased min-h-screen">
@@ -106,11 +107,36 @@
                 </div>
             </div>
 
+            <!-- Melhor Cliente -->
+            <div id="best-client-card" class="hidden bg-dark-800 border border-gold-500/30 rounded-sm p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-gold-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-xs">Melhor Cliente</p>
+                        <p id="best-client-name" class="text-white font-semibold text-sm">-</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                    <div class="text-center">
+                        <p id="best-client-visits" class="text-gold-500 font-bold">0</p>
+                        <p class="text-gray-500 text-xs">Visitas</p>
+                    </div>
+                    <div class="text-center">
+                        <p id="best-client-spend" class="text-gold-500 font-bold">R$ 0</p>
+                        <p class="text-gray-500 text-xs">Total Gasto</p>
+                    </div>
+                    <a id="best-client-wa" href="#" target="_blank" class="btn-confirm px-3 py-1 rounded-sm text-xs font-medium inline-block no-underline">WhatsApp</a>
+                </div>
+            </div>
+
             <!-- Navegador de Data -->
             <div class="bg-dark-800 border border-dark-600 rounded-sm p-4 mb-6 flex flex-col sm:flex-row items-center gap-4">
                 <div class="flex items-center gap-2">
                     <button id="btn-today" class="bg-gold-500 text-dark-900 px-4 py-2 rounded-sm text-sm font-semibold hover:bg-gold-400 transition-colors">Hoje</button>
                     <button id="btn-tomorrow" class="bg-dark-700 text-gray-300 px-4 py-2 rounded-sm text-sm font-medium hover:bg-dark-600 transition-colors">Amanhã</button>
+                    <button id="btn-month" class="bg-dark-700 text-gray-300 px-4 py-2 rounded-sm text-sm font-medium hover:bg-dark-600 transition-colors">Mês</button>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="btn-prev" class="bg-dark-700 text-gray-300 p-2 rounded-sm hover:bg-dark-600 transition-colors" aria-label="Dia anterior">
@@ -134,6 +160,7 @@
                     <button data-filter="all" class="filter-btn px-4 py-2 rounded-sm text-sm font-medium bg-gold-500 text-dark-900">Todos</button>
                     <button data-filter="pending" class="filter-btn px-4 py-2 rounded-sm text-sm font-medium bg-dark-700 text-gray-300 hover:bg-dark-600">Pendentes</button>
                     <button data-filter="confirmed" class="filter-btn px-4 py-2 rounded-sm text-sm font-medium bg-dark-700 text-gray-300 hover:bg-dark-600">Confirmados</button>
+                    <button data-filter="blocked" class="filter-btn px-4 py-2 rounded-sm text-sm font-medium bg-dark-700 text-gray-300 hover:bg-dark-600">Bloqueados</button>
                 </div>
                 <div class="flex-1">
                     <input type="text" id="search-input" placeholder="Buscar por nome ou telefone..."
@@ -189,13 +216,16 @@
     <script>
     (function() {
         const SERVICES = { 'Barba': 15, 'Combo Corte + Barba': 25, 'Degradê': 20, 'Corte Social': 20 };
-        const VALID_STATUSES = ['pending', 'confirmed', 'cancelled'];
+        const PIX = { key: 'edigarsouzabarbearia', name: 'Edigar Souza', bank: 'Banco do Brasil' };
+        const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'blocked'];
         const REFRESH_INTERVAL = 30000;
         let currentFilter = 'all';
         let currentSearch = '';
         let allBookings = [];
         let refreshTimer = null;
         let selectedDate = new Date();
+        let viewMode = 'daily';
+        let selectedMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
         let sessionToken = sessionStorage.getItem('admin_token');
 
         const loginScreen = document.getElementById('login-screen');
@@ -220,12 +250,18 @@
         const filterBtns = document.querySelectorAll('.filter-btn');
         const btnToday = document.getElementById('btn-today');
         const btnTomorrow = document.getElementById('btn-tomorrow');
+        const btnMonth = document.getElementById('btn-month');
         const btnPrev = document.getElementById('btn-prev');
         const btnNext = document.getElementById('btn-next');
         const datePicker = document.getElementById('date-picker');
         const selectedDateEl = document.getElementById('selected-date');
         const connectionStatus = document.getElementById('connection-status');
         const tableTitle = document.getElementById('table-title');
+        const bestClientCard = document.getElementById('best-client-card');
+        const bestClientName = document.getElementById('best-client-name');
+        const bestClientVisits = document.getElementById('best-client-visits');
+        const bestClientSpend = document.getElementById('best-client-spend');
+        const bestClientWa = document.getElementById('best-client-wa');
 
         function updateClock() {
             const now = new Date();
@@ -252,8 +288,14 @@
         }
 
         function updateSelectedDateUI() {
-            selectedDateEl.textContent = formatSelectedDate();
-            datePicker.value = getDateStr(selectedDate);
+            if (viewMode === 'monthly') {
+                const [y, m] = selectedMonth.split('-').map(Number);
+                const monthDate = new Date(y, m - 1, 1);
+                selectedDateEl.textContent = monthDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            } else {
+                selectedDateEl.textContent = formatSelectedDate();
+                datePicker.value = getDateStr(selectedDate);
+            }
         }
 
         function isToday(date) {
@@ -268,14 +310,19 @@
         }
 
         function updateDateButtons() {
-            btnToday.classList.toggle('bg-gold-500', isToday(selectedDate));
-            btnToday.classList.toggle('text-dark-900', isToday(selectedDate));
-            btnToday.classList.toggle('bg-dark-700', !isToday(selectedDate));
-            btnToday.classList.toggle('text-gray-300', !isToday(selectedDate));
-            btnTomorrow.classList.toggle('bg-gold-500', isTomorrow(selectedDate));
-            btnTomorrow.classList.toggle('text-dark-900', isTomorrow(selectedDate));
-            btnTomorrow.classList.toggle('bg-dark-700', !isTomorrow(selectedDate));
-            btnTomorrow.classList.toggle('text-gray-300', !isTomorrow(selectedDate));
+            const isMonthly = viewMode === 'monthly';
+            btnToday.classList.toggle('bg-gold-500', !isMonthly && isToday(selectedDate));
+            btnToday.classList.toggle('text-dark-900', !isMonthly && isToday(selectedDate));
+            btnToday.classList.toggle('bg-dark-700', isMonthly || !isToday(selectedDate));
+            btnToday.classList.toggle('text-gray-300', isMonthly || !isToday(selectedDate));
+            btnTomorrow.classList.toggle('bg-gold-500', !isMonthly && isTomorrow(selectedDate));
+            btnTomorrow.classList.toggle('text-dark-900', !isMonthly && isTomorrow(selectedDate));
+            btnTomorrow.classList.toggle('bg-dark-700', isMonthly || !isTomorrow(selectedDate));
+            btnTomorrow.classList.toggle('text-gray-300', isMonthly || !isTomorrow(selectedDate));
+            btnMonth.classList.toggle('bg-gold-500', isMonthly);
+            btnMonth.classList.toggle('text-dark-900', isMonthly);
+            btnMonth.classList.toggle('bg-dark-700', !isMonthly);
+            btnMonth.classList.toggle('text-gray-300', !isMonthly);
         }
 
         function changeDate(newDate) {
@@ -285,21 +332,45 @@
             loadDashboard(true);
         }
 
-        btnToday.addEventListener('click', () => changeDate(new Date()));
+        btnToday.addEventListener('click', () => { viewMode = 'daily'; changeDate(new Date()); });
         btnTomorrow.addEventListener('click', () => {
+            viewMode = 'daily';
             const t = new Date();
             t.setDate(t.getDate() + 1);
             changeDate(t);
         });
+        btnMonth.addEventListener('click', () => {
+            viewMode = viewMode === 'monthly' ? 'daily' : 'monthly';
+            updateDateButtons();
+            loadDashboard(true);
+        });
         btnPrev.addEventListener('click', () => {
-            const d = new Date(selectedDate);
-            d.setDate(d.getDate() - 1);
-            changeDate(d);
+            if (viewMode === 'monthly') {
+                const [y, m] = selectedMonth.split('-').map(Number);
+                const prev = new Date(y, m - 2, 1);
+                selectedMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+                updateSelectedDateUI();
+                updateDateButtons();
+                loadDashboard(true);
+            } else {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() - 1);
+                changeDate(d);
+            }
         });
         btnNext.addEventListener('click', () => {
-            const d = new Date(selectedDate);
-            d.setDate(d.getDate() + 1);
-            changeDate(d);
+            if (viewMode === 'monthly') {
+                const [y, m] = selectedMonth.split('-').map(Number);
+                const next = new Date(y, m, 1);
+                selectedMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+                updateSelectedDateUI();
+                updateDateButtons();
+                loadDashboard(true);
+            } else {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() + 1);
+                changeDate(d);
+            }
         });
         datePicker.addEventListener('change', () => {
             const parts = datePicker.value.split('-');
@@ -409,10 +480,17 @@
             }
 
             try {
+                const payload = { token: sessionToken };
+                if (viewMode === 'monthly') {
+                    payload.mode = 'monthly';
+                    payload.month = selectedMonth;
+                } else {
+                    payload.date = getDateStr(selectedDate);
+                }
                 const res = await fetch('/api/admin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: sessionToken, date: getDateStr(selectedDate) })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await res.json();
@@ -452,11 +530,18 @@
         function renderDashboard(data) {
             loading.classList.add('hidden');
             dataError.classList.add('hidden');
-            allBookings = data.bookings || [];
+            allBookings = [...(data.bookings || []), ...(data.blocked || [])];
 
-            const d = new Date(getDateStr(selectedDate) + 'T12:00:00');
-            const dateLabel = isToday(selectedDate) ? 'Hoje' : d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-            tableTitle.textContent = `Agendamentos — ${dateLabel}`;
+            if (viewMode === 'monthly') {
+                const [y, m] = selectedMonth.split('-').map(Number);
+                const monthDate = new Date(y, m - 1, 1);
+                const monthLabel = monthDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                tableTitle.textContent = `Agendamentos — ${monthLabel}`;
+            } else {
+                const d = new Date(getDateStr(selectedDate) + 'T12:00:00');
+                const dateLabel = isToday(selectedDate) ? 'Hoje' : d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+                tableTitle.textContent = `Agendamentos — ${dateLabel}`;
+            }
 
             const pending = allBookings.filter(b => b.status === 'pending').length;
             const confirmed = allBookings.filter(b => b.status === 'confirmed').length;
@@ -465,6 +550,16 @@
             statRevenue.textContent = `R$ ${(data.totalRevenue || 0).toFixed(2)}`;
             statPending.textContent = pending;
             statConfirmed.textContent = confirmed;
+
+            if (data.bestClient) {
+                bestClientCard.classList.remove('hidden');
+                bestClientName.textContent = `${data.bestClient.name} (${data.bestClient.phone})`;
+                bestClientVisits.textContent = data.bestClient.bookingCount;
+                bestClientSpend.textContent = `R$ ${data.bestClient.totalSpend.toFixed(2)}`;
+                bestClientWa.href = `https://wa.me/55${data.bestClient.phone}?text=${encodeURIComponent('Olá! Obrigado pela sua preferência. Agende seu próximo horário!')}`;
+            } else {
+                bestClientCard.classList.add('hidden');
+            }
 
             renderTable();
         }
@@ -518,7 +613,7 @@
                 const statusSpan = document.createElement('span');
                 const safeStatus = VALID_STATUSES.includes(b.status) ? b.status : 'pending';
                 statusSpan.className = `px-2 py-1 rounded-sm text-xs font-medium status-${safeStatus}`;
-                statusSpan.textContent = safeStatus === 'pending' ? 'Pendente' : safeStatus === 'confirmed' ? 'Confirmado' : 'Cancelado';
+                statusSpan.textContent = safeStatus === 'pending' ? 'Pendente' : safeStatus === 'confirmed' ? 'Confirmado' : safeStatus === 'blocked' ? 'Bloqueado' : 'Cancelado';
                 tdStatus.appendChild(statusSpan);
 
                 const tdPrice = document.createElement('td');
@@ -550,11 +645,21 @@
                     const msg = `Olá, ${b.name}! Seu agendamento na Edigar Barbearia foi confirmado!\n\nServiço: ${b.service}\nData: ${dateFormatted}\nHorário: ${b.time}\n\nAguardamos você!`;
                     const waUrl = `https://wa.me/55${phoneClean}?text=${encodeURIComponent(msg)}`;
 
+                    const cobrarMsg = `Olá, ${b.name}! Tudo bem?\n\nSeu agendamento na Edigar Barbearia foi confirmado:\nServiço: ${b.service}\nData: ${dateFormatted}\nHorário: ${b.time}\nValor: R$ ${(b.price || 0).toFixed(2)}\n\nPara garantir seu horário, por favor realize o pagamento via Pix:\nChave Pix: ${PIX.key}\nNome: ${PIX.name}\nBanco: ${PIX.bank}\n\nApós o pagamento, envie o comprovante por aqui. Obrigado!`;
+                    const cobrarUrl = `https://wa.me/55${phoneClean}?text=${encodeURIComponent(cobrarMsg)}`;
+
                     const waBtn = document.createElement('a');
                     waBtn.href = waUrl;
                     waBtn.target = '_blank';
                     waBtn.className = 'btn-confirm px-3 py-1 rounded-sm text-xs font-medium mr-1 inline-block no-underline';
                     waBtn.textContent = 'WhatsApp';
+
+                    const cobrarBtn = document.createElement('a');
+                    cobrarBtn.href = cobrarUrl;
+                    cobrarBtn.target = '_blank';
+                    cobrarBtn.className = 'px-3 py-1 rounded-sm text-xs font-medium mr-1 inline-block no-underline';
+                    cobrarBtn.style.cssText = 'background: #1e40af; color: #bfdbfe;';
+                    cobrarBtn.textContent = 'Cobrar';
 
                     const cancelBtn = document.createElement('button');
                     cancelBtn.className = 'btn-cancel px-3 py-1 rounded-sm text-xs font-medium';
@@ -562,7 +667,15 @@
                     cancelBtn.addEventListener('click', () => cancelBooking(b.date, b.time, b.name));
 
                     tdActions.appendChild(waBtn);
+                    tdActions.appendChild(cobrarBtn);
                     tdActions.appendChild(cancelBtn);
+                } else if (b.status === 'blocked') {
+                    const unblockBtn = document.createElement('button');
+                    unblockBtn.className = 'px-3 py-1 rounded-sm text-xs font-medium mr-1';
+                    unblockBtn.style.cssText = 'background: #1e3a5f; color: #93c5fd;';
+                    unblockBtn.textContent = 'Desbloquear';
+                    unblockBtn.addEventListener('click', () => toggleBlock(b.date, b.time, 'unblock'));
+                    tdActions.appendChild(unblockBtn);
                 }
 
                 tr.appendChild(tdTime);
@@ -595,7 +708,8 @@
                         const dateFormatted = dateObj.toLocaleDateString('pt-BR', {
                             weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
                         });
-                        const msg = `Olá, ${b.name}! Seu agendamento na Edigar Barbearia foi confirmado!\n\nServiço: ${b.service}\nData: ${dateFormatted}\nHorário: ${b.time}\n\nAguardamos você!`;
+                        const price = SERVICES[b.service] || 0;
+                        const msg = `Olá, ${b.name}! Seu agendamento na Edigar Barbearia foi confirmado!\n\nServiço: ${b.service}\nData: ${dateFormatted}\nHorário: ${b.time}\nValor: R$ ${price.toFixed(2)}\n\nPara garantir seu horário, por favor realize o pagamento via Pix:\nChave Pix: ${PIX.key}\nNome: ${PIX.name}\nBanco: ${PIX.bank}\n\nApós o pagamento, envie o comprovante por aqui. Aguardamos você!`;
                         const phone = (b.phone || '').replace(/\D/g, '');
                         const waUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`;
                         window.open(waUrl, '_blank');
@@ -636,6 +750,35 @@
                     stopAutoRefresh();
                 } else {
                     alert(data.error || 'Erro ao cancelar.');
+                }
+            } catch {
+                alert('Erro de conexão.');
+            }
+        }
+
+        async function toggleBlock(date, time, action) {
+            const msg = action === 'block' ? `Bloquear horário ${time}?` : `Desbloquear horário ${time}?`;
+            if (!confirm(msg)) return;
+
+            try {
+                const res = await fetch('/api/block', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: sessionToken, date, time, action })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    loadDashboard(true);
+                } else if (res.status === 401) {
+                    sessionToken = null;
+                    sessionStorage.removeItem('admin_token');
+                    loginScreen.classList.remove('hidden');
+                    dashboard.classList.add('hidden');
+                    stopAutoRefresh();
+                } else {
+                    alert(data.error || 'Erro ao processar.');
                 }
             } catch {
                 alert('Erro de conexão.');

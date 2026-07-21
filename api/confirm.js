@@ -1,5 +1,7 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime } from './_lib/shared.js';
 
+const SERVICES = { 'Barba': 15, 'Combo Corte + Barba': 25, 'Degradê': 20, 'Corte Social': 20 };
+
 const LUA_CONFIRM = `
 local key = KEYS[1]
 local data = redis.call('GET', key)
@@ -51,6 +53,21 @@ export default async function handler(req, res) {
         if (result === 'OK') {
             const slotData = await redis.get(slotKey);
             const slot = typeof slotData === 'string' ? JSON.parse(slotData) : slotData;
+
+            const phone = (slot.phone || '').replace(/\D/g, '');
+            if (phone) {
+                const price = SERVICES[slot.service] || 0;
+                const clientKey = `client:${phone}`;
+                await redis.hincrby(clientKey, 'booking_count', 1).catch(() => {});
+                await redis.hincrby(clientKey, 'total_spend', price).catch(() => {});
+                await redis.hset(clientKey, 'name', slot.name || '', 'last_visit', date).catch(() => {});
+                await redis.zadd('clients:ranking', { score: 0, member: phone }).catch(() => {});
+                const totalSpend = await redis.hget(clientKey, 'total_spend').catch(() => 0);
+                if (totalSpend) {
+                    await redis.zadd('clients:ranking', { score: Number(totalSpend), member: phone }).catch(() => {});
+                }
+            }
+
             return res.status(200).json({
                 success: true,
                 message: 'Agendamento confirmado.',

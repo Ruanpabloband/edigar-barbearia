@@ -342,8 +342,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     timeSelect.innerHTML = '<option value="" disabled selected>Serviço indisponível</option>';
                     return;
                 }
-                const { booked } = await res.json();
-                const available = allSlots.filter(slot => !booked.includes(slot));
+                const { booked, blocked } = await res.json();
+                const unavailable = [...(booked || []), ...(blocked || [])];
+                const available = allSlots.filter(slot => !unavailable.includes(slot));
                 populateTimeSlots(available);
             } catch {
                 populateTimeSlots(allSlots);

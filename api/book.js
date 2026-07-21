@@ -66,8 +66,14 @@ export default async function handler(req, res) {
     }
 
     const slotKey = `slot:${date}:${time}`;
+    const blockKey = `blocked:${date}:${time}`;
 
     try {
+        const isBlocked = await redis.get(blockKey);
+        if (isBlocked) {
+            return res.status(403).json({ error: 'Este horário está bloqueado.' });
+        }
+
         const result = await redis.set(slotKey, {
             name: name.substring(0, 100),
             phone: phone.substring(0, 20),

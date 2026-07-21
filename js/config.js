@@ -15,6 +15,11 @@ const CONFIG = {
         { name: "Degradê", price: 20, duration: "45 min", description: "Degradê perfeito com transições suaves e acabamento impecável." },
         { name: "Corte Social", price: 20, duration: "35 min", description: "Corte social com acabamento impecável para o dia a dia." }
     ],
+    pix: {
+        key: "edigarsouzabarbearia",
+        name: "Edigar Souza",
+        bank: "Banco do Brasil"
+    },
     images: {
         logo: "assets/images/logo.png",
         hero: "assets/images/hero.png"

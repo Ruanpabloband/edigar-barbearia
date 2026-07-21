@@ -29,7 +29,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Dados inválidos.' });
     }
 
-    const { token, date: reqDate, search, logout } = body || {};
+    const { token, date: reqDate, month: reqMonth, mode, search, logout } = body || {};
 
     if (logout) {
         await destroyAdminSession(token);
@@ -40,12 +40,58 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' });
     }
 
-    const targetDate = reqDate || new Date().toISOString().split('T')[0];
-    if (!validateDate(targetDate)) {
-        return res.status(400).json({ error: 'Data inválida.' });
-    }
-
     try {
+        if (mode === 'monthly' && reqMonth && /^\d{4}-\d{2}$/.test(reqMonth)) {
+            const allDates = await redis.smembers('booked_dates').catch(() => []);
+            const monthDates = allDates.filter(d => d.startsWith(reqMonth));
+
+            const bookings = [];
+            let totalRevenue = 0;
+
+            for (const dateStr of monthDates) {
+                const keys = await redis.keys(`slot:${dateStr}:*`);
+                for (const key of keys) {
+                    const time = key.replace(`slot:${dateStr}:`, '');
+                    const data = await redis.get(key);
+                    if (data && data.status !== 'cancelled') {
+                        const price = SERVICES[data.service] || 0;
+                        const matchSearch = !search ||
+                            (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                            (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
+                        if (matchSearch) {
+                            bookings.push({ date: dateStr, time, service: data.service, name: data.name, phone: data.phone, price, status: data.status, bookedAt: data.bookedAt });
+                            totalRevenue += price;
+                        }
+                    }
+                }
+            }
+
+            bookings.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+            const blocked = [];
+            for (const dateStr of monthDates) {
+                const bkKeys = await redis.keys(`blocked:${dateStr}:*`);
+                for (const k of bkKeys) {
+                    blocked.push({ date: dateStr, time: k.replace(`blocked:${dateStr}:`, ''), status: 'blocked' });
+                }
+            }
+
+            return res.status(200).json({
+                success: true,
+                mode: 'monthly',
+                month: reqMonth,
+                bookings,
+                blocked,
+                totalBookings: bookings.length,
+                totalRevenue
+            });
+        }
+
+        const targetDate = reqDate || new Date().toISOString().split('T')[0];
+        if (!validateDate(targetDate)) {
+            return res.status(400).json({ error: 'Data inválida.' });
+        }
+
         const keys = await redis.keys(`slot:${targetDate}:*`);
         const bookings = [];
         let totalRevenue = 0;
@@ -82,12 +128,33 @@ export default async function handler(req, res) {
 
         bookings.sort((a, b) => a.time.localeCompare(b.time));
 
+        const blockedKeys = await redis.keys(`blocked:${targetDate}:*`);
+        const blocked = blockedKeys.map(k => ({
+            date: targetDate,
+            time: k.replace(`blocked:${targetDate}:`, ''),
+            status: 'blocked'
+        }));
+
+        let bestClient = null;
+        try {
+            const topClients = await redis.zrevrange('clients:ranking', 0, 4, { withScores: true });
+            if (topClients && topClients.length > 0) {
+                const topPhone = topClients[0].member;
+                const clientData = await redis.hgetall(`client:${topPhone}`);
+                if (clientData && clientData.name) {
+                    bestClient = { phone: topPhone, name: clientData.name, bookingCount: Number(clientData.booking_count) || 0, totalSpend: Number(clientData.total_spend) || 0 };
+                }
+            }
+        } catch {}
+
         return res.status(200).json({
             success: true,
             today: targetDate,
             bookings,
+            blocked,
             totalBookings: bookings.length,
-            totalRevenue
+            totalRevenue,
+            bestClient
         });
     } catch (error) {
         console.error('Erro ao buscar dados admin');

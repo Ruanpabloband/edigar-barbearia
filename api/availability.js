@@ -27,7 +27,10 @@ export default async function handler(req, res) {
             }
         }
 
-        return res.status(200).json({ booked: bookedSlots });
+        const blockedKeys = await redis.keys(`blocked:${date}:*`);
+        const blockedSlots = blockedKeys.map(k => k.replace(`blocked:${date}:`, ''));
+
+        return res.status(200).json({ booked: bookedSlots, blocked: blockedSlots });
     } catch (error) {
         console.error('Erro ao buscar slots');
         return res.status(503).json({ error: 'Serviço temporariamente indisponível. Tente novamente.' });
