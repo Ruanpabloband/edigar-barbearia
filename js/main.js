@@ -334,7 +334,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const res = await fetch(`/api/availability?date=${dateInput.value}`);
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const res = await fetch(`/api/availability?date=${dateInput.value}`, {
+                    headers: { 'X-Timezone': tz }
+                });
                 if (res.status === 503) {
                     timeSelect.innerHTML = '<option value="" disabled selected>Serviço indisponível</option>';
                     return;
@@ -393,9 +396,10 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Reservando...';
 
             try {
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
                 const res = await fetch('/api/book', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-Timezone': tz },
                     body: JSON.stringify({ date, time, name, phone, service })
                 });
 
@@ -489,7 +493,10 @@ document.addEventListener('DOMContentLoaded', () => {
         myBookingsList.classList.add('hidden');
 
         try {
-            const res = await fetch(`/api/my-bookings?phone=${encodeURIComponent(phone)}`);
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const res = await fetch(`/api/my-bookings?phone=${encodeURIComponent(phone)}`, {
+                headers: { 'X-Timezone': tz }
+            });
             const data = await res.json();
 
             myBookingsLoading.classList.add('hidden');

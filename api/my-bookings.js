@@ -1,22 +1,19 @@
-import { Redis } from '@upstash/redis';
-
-const redis = new Redis({
-    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
-});
-
-const ALLOWED_ORIGINS = ['https://edigar-barbearia.vercel.app'];
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, getClientDate } from '../_lib/shared.js';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
+    for (const [key, value] of Object.entries(getCorsHeaders(origin))) {
+        res.setHeader(key, value);
     }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+    if (req.method === 'OPTIONS') return handleOptions(res);
+    if (req.method !== 'GET') return rejectMethod(res);
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+    const { withinLimit } = await checkRateLimit(ip, 'mybookings', 15);
+    if (!withinLimit) {
+        return res.status(429).json({ error: 'Muitas requisições. Aguarde 1 minuto.' });
+    }
 
     const { phone } = req.query;
     if (!phone) {
@@ -24,10 +21,13 @@ export default async function handler(req, res) {
     }
 
     const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+        return res.status(400).json({ error: 'Telefone inválido.' });
+    }
 
     try {
         const bookedDates = await redis.smembers('booked_dates');
-        const today = new Date().toISOString().split('T')[0];
+        const today = getClientDate(req);
         const bookings = [];
 
         for (const date of bookedDates) {
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, bookings });
     } catch (error) {
-        console.error('Erro ao buscar reservas:', error.message);
+        console.error('Erro ao buscar reservas');
         return res.status(500).json({ error: 'Erro ao buscar reservas. Tente novamente.' });
     }
 }

@@ -1,9 +1,4 @@
-import { Redis } from '@upstash/redis';
-
-const redis = new Redis({
-    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, destroyAdminSession, validateDate } from '../_lib/shared.js';
 
 const SERVICES = {
     'Barba': 15,
@@ -12,41 +7,19 @@ const SERVICES = {
     'Corte Social': 20
 };
 
-const ALLOWED_ORIGINS = ['https://edigar-barbearia.vercel.app'];
-
-function setCors(res, origin) {
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-}
-
-async function checkRateLimit(ip) {
-    const key = `ratelimit:${ip}`;
-    const count = await redis.incr(key).catch(() => 0);
-    if (count === 1) {
-        await redis.expire(key, 60).catch(() => {});
-    }
-    return count <= 30;
-}
-
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
-    setCors(res, origin);
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+    for (const [key, value] of Object.entries(getCorsHeaders(origin))) {
+        res.setHeader(key, value);
     }
 
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+    if (req.method === 'OPTIONS') return handleOptions(res);
+    if (req.method !== 'POST') return rejectMethod(res);
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
-    const withinLimit = await checkRateLimit(ip);
+    const { withinLimit } = await checkRateLimit(ip, 'admin', 30);
     if (!withinLimit) {
-        return res.status(429).json({ error: 'Muitas tentativas. Aguarde 60 segundos.' });
+        return res.status(429).json({ error: 'Muitas requisições. Aguarde 60 segundos.' });
     }
 
     let body;
@@ -56,16 +29,24 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Dados inválidos.' });
     }
 
-    const { password, date: reqDate, search } = body || {};
-    const targetDate = reqDate || new Date().toISOString().split('T')[0];
+    const { token, date: reqDate, search, logout } = body || {};
 
-    if (!password || password !== process.env.ADMIN_PASSWORD) {
-        return res.status(401).json({ error: 'Senha incorreta.' });
+    if (logout) {
+        await destroyAdminSession(token);
+        return res.status(200).json({ success: true });
+    }
+
+    if (!await verifyAdminSession(token)) {
+        return res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' });
+    }
+
+    const targetDate = reqDate || new Date().toISOString().split('T')[0];
+    if (!validateDate(targetDate)) {
+        return res.status(400).json({ error: 'Data inválida.' });
     }
 
     try {
         const keys = await redis.keys(`slot:${targetDate}:*`);
-        const prefix = `slot:${targetDate}:`;
         const bookings = [];
         let totalRevenue = 0;
 
@@ -74,7 +55,7 @@ export default async function handler(req, res) {
         }
 
         for (const key of keys) {
-            const time = key.replace(prefix, '');
+            const time = key.replace(`slot:${targetDate}:`, '');
             const data = await redis.get(key);
 
             if (data && data.status !== 'cancelled') {
@@ -109,7 +90,7 @@ export default async function handler(req, res) {
             totalRevenue
         });
     } catch (error) {
-        console.error('Erro ao buscar dados admin:', error.message);
+        console.error('Erro ao buscar dados admin');
         return res.status(500).json({ error: 'Erro ao carregar dados.' });
     }
 }

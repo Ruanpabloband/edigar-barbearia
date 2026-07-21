@@ -1,42 +1,35 @@
-import { Redis } from '@upstash/redis';
-
-const redis = new Redis({
-    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
-});
-
-const ALLOWED_ORIGINS = ['https://edigar-barbearia.vercel.app'];
+import { redis, getCorsHeaders, handleOptions, rejectMethod, validateDate } from '../_lib/shared.js';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+    for (const [key, value] of Object.entries(getCorsHeaders(origin))) {
+        res.setHeader(key, value);
     }
 
-    if (req.method !== 'GET') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+    if (req.method === 'OPTIONS') return handleOptions(res);
+    if (req.method !== 'GET') return rejectMethod(res);
 
     const { date } = req.query;
 
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (!date || !validateDate(date)) {
         return res.status(400).json({ error: 'Data inválida. Use formato YYYY-MM-DD.' });
     }
 
     try {
         const prefix = `slot:${date}:`;
         const keys = await redis.keys(`${prefix}*`);
-        const bookedSlots = keys.map(k => k.replace(prefix, ''));
+        const bookedSlots = [];
+
+        for (const key of keys) {
+            const slot = await redis.get(key);
+            if (slot && slot.status !== 'cancelled') {
+                bookedSlots.push(key.replace(prefix, ''));
+            }
+        }
 
         return res.status(200).json({ booked: bookedSlots });
     } catch (error) {
-        console.error('Erro ao buscar slots:', error.message);
+        console.error('Erro ao buscar slots');
         return res.status(503).json({ error: 'Serviço temporariamente indisponível. Tente novamente.' });
     }
 }

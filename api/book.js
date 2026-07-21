@@ -1,11 +1,4 @@
-import { Redis } from '@upstash/redis';
-
-const redis = new Redis({
-    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
-});
-
-const ALLOWED_ORIGINS = ['https://edigar-barbearia.vercel.app'];
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, validateDate, validateTime, getClientDate } from '../_lib/shared.js';
 
 const HOURS = {
     0: null,
@@ -18,7 +11,7 @@ const HOURS = {
 };
 
 function isSlotWithinHours(dateStr, timeStr) {
-    const [h, m] = timeStr.split(':').map(Number);
+    const [h] = timeStr.split(':').map(Number);
     const date = new Date(dateStr + 'T12:00:00');
     const day = date.getDay();
     const hours = HOURS[day];
@@ -28,18 +21,17 @@ function isSlotWithinHours(dateStr, timeStr) {
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+    for (const [key, value] of Object.entries(getCorsHeaders(origin))) {
+        res.setHeader(key, value);
     }
 
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+    if (req.method === 'OPTIONS') return handleOptions(res);
+    if (req.method !== 'POST') return rejectMethod(res);
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+    const { withinLimit } = await checkRateLimit(ip, 'book', 10);
+    if (!withinLimit) {
+        return res.status(429).json({ error: 'Muitas requisições. Aguarde 1 minuto.' });
     }
 
     let body;
@@ -55,15 +47,20 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
     }
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
+    if (!validateDate(date) || !validateTime(time)) {
         return res.status(400).json({ error: 'Formato de data ou horário inválido.' });
+    }
+
+    const ALLOWED_SERVICES = ['Barba', 'Combo Corte + Barba', 'Degradê', 'Corte Social'];
+    if (!ALLOWED_SERVICES.includes(service)) {
+        return res.status(400).json({ error: 'Serviço inválido.' });
     }
 
     if (!isSlotWithinHours(date, time)) {
         return res.status(400).json({ error: 'Horário fora do expediente.' });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getClientDate(req);
     if (date < today) {
         return res.status(400).json({ error: 'Não é possível agendar em datas passadas.' });
     }
@@ -74,7 +71,7 @@ export default async function handler(req, res) {
         const result = await redis.set(slotKey, {
             name: name.substring(0, 100),
             phone: phone.substring(0, 20),
-            service: service.substring(0, 50),
+            service,
             status: 'pending',
             bookedAt: Date.now()
         }, { nx: true, ex: 172800 });
@@ -87,7 +84,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, message: 'Horário reservado com sucesso!' });
     } catch (error) {
-        console.error('Erro ao reservar slot:', error.message);
+        console.error('Erro ao reservar slot');
         return res.status(500).json({ error: 'Erro ao reservar horário. Tente novamente.' });
     }
 }

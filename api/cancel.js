@@ -1,22 +1,56 @@
-import { Redis } from '@upstash/redis';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, safeCompare, validateDate, validateTime } from '../_lib/shared.js';
 
-const redis = new Redis({
-    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
-});
-
-const ALLOWED_ORIGINS = ['https://edigar-barbearia.vercel.app'];
+const LUA_CANCEL = `
+local key = KEYS[1]
+local dateKey = KEYS[2]
+local date = ARGV[1]
+local isAdmin = ARGV[2] == '1'
+local phone = ARGV[3]
+local data = redis.call('GET', key)
+if not data then return redis.error('NOT_FOUND') end
+local slot = cjson.decode(data)
+if slot.status == 'cancelled' then return redis.error('ALREADY_CANCELLED') end
+if not isAdmin then
+    local cleanPhone = string.gsub(phone, '%D', '')
+    local slotPhone = string.gsub(slot.phone or '', '%D', '')
+    if cleanPhone ~= slotPhone then return redis.error('PHONE_MISMATCH') end
+end
+slot.status = 'cancelled'
+redis.call('SET', key, cjson.encode(slot), 'EX', 2592000)
+local keys = redis.call('KEYS', 'slot:' .. date .. ':*')
+local hasActive = false
+for _, k in ipairs(keys) do
+    if k ~= key then
+        local s = redis.call('GET', k)
+        if s then
+            local slotData = cjson.decode(s)
+            if slotData.status ~= 'cancelled' then
+                hasActive = true
+                break
+            end
+        end
+    end
+end
+if not hasActive then
+    redis.call('SREM', dateKey, date)
+end
+return 'OK'
+`;
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
+    for (const [key, value] of Object.entries(getCorsHeaders(origin))) {
+        res.setHeader(key, value);
     }
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    if (req.method === 'OPTIONS') return handleOptions(res);
+    if (req.method !== 'POST') return rejectMethod(res);
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+    const { withinLimit } = await checkRateLimit(ip, 'cancel', 30);
+    if (!withinLimit) {
+        return res.status(429).json({ error: 'Muitas requisições. Aguarde 60 segundos.' });
+    }
 
     let body;
     try {
@@ -25,65 +59,35 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Dados inválidos.' });
     }
 
-    const { password, date, time, phone } = body || {};
+    const { token, date, time, phone } = body || {};
 
-    if (!date || !time) {
-        return res.status(400).json({ error: 'Data e horário são obrigatórios.' });
+    if (!date || !time || !validateDate(date) || !validateTime(time)) {
+        return res.status(400).json({ error: 'Data ou horário inválido.' });
     }
 
-    const isAdmin = password && password === process.env.ADMIN_PASSWORD;
+    let isAdmin = false;
+    if (token) {
+        isAdmin = await verifyAdminSession(token);
+    }
 
     if (!isAdmin && !phone) {
         return res.status(400).json({ error: 'Telefone é obrigatório para cancelamento do cliente.' });
     }
 
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-    const rlKey = `ratelimit:${ip}`;
-    const attempts = await redis.incr(rlKey);
-    if (attempts === 1) await redis.expire(rlKey, 60);
-    if (attempts > 30) {
-        return res.status(429).json({ error: 'Muitas tentativas. Aguarde 1 minuto.' });
-    }
-
     const slotKey = `slot:${date}:${time}`;
+
     try {
-        const slot = await redis.get(slotKey);
-        if (!slot) {
-            return res.status(404).json({ error: 'Agendamento não encontrado.' });
+        const result = await redis.eval(LUA_CANCEL, [slotKey, 'booked_dates'], [date, isAdmin ? '1' : '0', phone || '']);
+        if (result === 'OK') {
+            return res.status(200).json({ success: true, message: 'Agendamento cancelado.' });
         }
-
-        if (slot.status === 'cancelled') {
-            return res.status(400).json({ error: 'Agendamento já cancelado.' });
-        }
-
-        if (!isAdmin) {
-            const cleanPhone = phone.replace(/\D/g, '');
-            const slotPhone = (slot.phone || '').replace(/\D/g, '');
-            if (cleanPhone !== slotPhone) {
-                return res.status(403).json({ error: 'Telefone não confere com o agendamento.' });
-            }
-        }
-
-        const ttl = await redis.ttl(slotKey);
-        await redis.set(slotKey, { ...slot, status: 'cancelled' }, { ex: ttl > 0 ? ttl : 172800 });
-
-        const prefix = `slot:${date}:`;
-        const keys = await redis.keys(`${prefix}*`);
-        let hasActive = false;
-        for (const key of keys) {
-            const s = await redis.get(key);
-            if (s && s.status !== 'cancelled') {
-                hasActive = true;
-                break;
-            }
-        }
-        if (!hasActive) {
-            await redis.srem('booked_dates', date);
-        }
-
-        return res.status(200).json({ success: true, message: 'Agendamento cancelado.' });
+        return res.status(500).json({ error: 'Erro ao cancelar.' });
     } catch (error) {
-        console.error('Erro ao cancelar agendamento:', error.message);
+        const msg = String(error.message || error);
+        if (msg.includes('NOT_FOUND')) return res.status(404).json({ error: 'Agendamento não encontrado.' });
+        if (msg.includes('ALREADY_CANCELLED')) return res.status(400).json({ error: 'Agendamento já cancelado.' });
+        if (msg.includes('PHONE_MISMATCH')) return res.status(403).json({ error: 'Telefone não confere com o agendamento.' });
+        console.error('Erro ao cancelar');
         return res.status(500).json({ error: 'Erro ao cancelar. Tente novamente.' });
     }
 }

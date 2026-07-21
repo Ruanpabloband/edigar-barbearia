@@ -73,6 +73,7 @@
                 <div class="flex items-center gap-3">
                     <img src="assets/images/logo.png" alt="" class="h-8 w-auto">
                     <h1 class="font-heading text-lg font-semibold">Painel Admin</h1>
+                    <span id="connection-status" class="hidden ml-2 px-2 py-0.5 rounded-sm text-xs font-medium bg-red-900/50 text-red-300">Sem conexão</span>
                 </div>
                 <div class="flex items-center gap-4">
                     <div class="text-right">
@@ -153,7 +154,7 @@
             <div id="table-wrapper" class="hidden">
                 <div class="bg-dark-800 border border-dark-600 rounded-sm overflow-hidden">
                     <div class="px-6 py-4 border-b border-dark-600">
-                        <h2 class="font-heading text-lg font-semibold">Agendamentos do Dia</h2>
+                        <h2 id="table-title" class="font-heading text-lg font-semibold">Agendamentos do Dia</h2>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
@@ -188,15 +189,14 @@
     <script>
     (function() {
         const SERVICES = { 'Barba': 15, 'Combo Corte + Barba': 25, 'Degradê': 20, 'Corte Social': 20 };
-        const MAX_ATTEMPTS = 3;
+        const VALID_STATUSES = ['pending', 'confirmed', 'cancelled'];
         const REFRESH_INTERVAL = 30000;
-        let attempts = parseInt(sessionStorage.getItem('admin_attempts') || '0');
-        let lockUntil = parseInt(sessionStorage.getItem('admin_lock') || '0');
         let currentFilter = 'all';
         let currentSearch = '';
         let allBookings = [];
         let refreshTimer = null;
         let selectedDate = new Date();
+        let sessionToken = sessionStorage.getItem('admin_token');
 
         const loginScreen = document.getElementById('login-screen');
         const dashboard = document.getElementById('dashboard');
@@ -224,6 +224,24 @@
         const btnNext = document.getElementById('btn-next');
         const datePicker = document.getElementById('date-picker');
         const selectedDateEl = document.getElementById('selected-date');
+        const connectionStatus = document.getElementById('connection-status');
+        const tableTitle = document.getElementById('table-title');
+
+        function updateClock() {
+            const now = new Date();
+            currentDate.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            currentTime.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        function setConnected(connected) {
+            if (connected) {
+                connectionStatus.classList.add('hidden');
+            } else {
+                connectionStatus.classList.remove('hidden');
+            }
+        }
 
         function formatSelectedDate() {
             return selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -249,9 +267,7 @@
             return date.getFullYear() === tomorrow.getFullYear() && date.getMonth() === tomorrow.getMonth() && date.getDate() === tomorrow.getDate();
         }
 
-        function changeDate(newDate) {
-            selectedDate = newDate;
-            updateSelectedDateUI();
+        function updateDateButtons() {
             btnToday.classList.toggle('bg-gold-500', isToday(selectedDate));
             btnToday.classList.toggle('text-dark-900', isToday(selectedDate));
             btnToday.classList.toggle('bg-dark-700', !isToday(selectedDate));
@@ -260,8 +276,13 @@
             btnTomorrow.classList.toggle('text-dark-900', isTomorrow(selectedDate));
             btnTomorrow.classList.toggle('bg-dark-700', !isTomorrow(selectedDate));
             btnTomorrow.classList.toggle('text-gray-300', !isTomorrow(selectedDate));
-            const pw = sessionStorage.getItem('admin_password');
-            if (pw) loadDashboard(pw, true);
+        }
+
+        function changeDate(newDate) {
+            selectedDate = newDate;
+            updateSelectedDateUI();
+            updateDateButtons();
+            loadDashboard(true);
         }
 
         btnToday.addEventListener('click', () => changeDate(new Date()));
@@ -285,14 +306,6 @@
             changeDate(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
         });
 
-        function updateClock() {
-            const now = new Date();
-            currentDate.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            currentTime.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        }
-        updateClock();
-        setInterval(updateClock, 1000);
-
         filterBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 currentFilter = btn.dataset.filter;
@@ -311,10 +324,10 @@
             renderTable();
         });
 
-        const savedPassword = sessionStorage.getItem('admin_password');
-        if (savedPassword) {
+        if (sessionToken) {
             updateSelectedDateUI();
-            loadDashboard(savedPassword);
+            updateDateButtons();
+            loadDashboard(false);
         }
 
         loginForm.addEventListener('submit', async (e) => {
@@ -322,19 +335,12 @@
             const password = document.getElementById('password').value.trim();
             if (!password) return;
 
-            if (Date.now() < lockUntil) {
-                const secs = Math.ceil((lockUntil - Date.now()) / 1000);
-                loginError.textContent = `Bloqueado. Tente em ${secs}s.`;
-                loginError.classList.remove('hidden');
-                return;
-            }
-
             loginBtn.disabled = true;
             loginBtn.textContent = 'Entrando...';
             loginError.classList.add('hidden');
 
             try {
-                const res = await fetch('/api/admin', {
+                const res = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password, date: getDateStr(selectedDate) })
@@ -343,34 +349,20 @@
                 const data = await res.json();
 
                 if (!res.ok) {
-                    attempts++;
-                    sessionStorage.setItem('admin_attempts', attempts);
-
-                    if (res.status === 429) {
-                        lockUntil = Date.now() + 60000;
-                        sessionStorage.setItem('admin_lock', lockUntil);
-                        loginError.textContent = data.error || 'Muitas tentativas. Bloqueado por 60s.';
-                    } else if (attempts >= MAX_ATTEMPTS) {
-                        lockUntil = Date.now() + 60000;
-                        sessionStorage.setItem('admin_lock', lockUntil);
-                        loginError.textContent = 'Muitas tentativas. Bloqueado por 60s.';
-                    } else {
-                        loginError.textContent = data.error || 'Senha incorreta.';
-                    }
+                    loginError.textContent = data.error || 'Senha incorreta.';
                     loginError.classList.remove('hidden');
                     loginBtn.disabled = false;
                     loginBtn.textContent = 'Entrar';
                     return;
                 }
 
-                attempts = 0;
-                sessionStorage.removeItem('admin_attempts');
-                sessionStorage.removeItem('admin_lock');
-                sessionStorage.setItem('admin_password', password);
+                sessionToken = data.token;
+                sessionStorage.setItem('admin_token', sessionToken);
 
                 loginScreen.classList.add('hidden');
                 dashboard.classList.remove('hidden');
                 updateSelectedDateUI();
+                updateDateButtons();
                 renderDashboard(data);
                 startAutoRefresh();
             } catch {
@@ -381,8 +373,16 @@
             }
         });
 
-        logoutBtn.addEventListener('click', () => {
-            sessionStorage.removeItem('admin_password');
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: sessionToken, logout: true })
+                });
+            } catch {}
+            sessionToken = null;
+            sessionStorage.removeItem('admin_token');
             dashboard.classList.add('hidden');
             loginScreen.classList.remove('hidden');
             document.getElementById('password').value = '';
@@ -392,8 +392,7 @@
         function startAutoRefresh() {
             stopAutoRefresh();
             refreshTimer = setInterval(() => {
-                const pw = sessionStorage.getItem('admin_password');
-                if (pw) loadDashboard(pw, true);
+                if (sessionToken) loadDashboard(true);
             }, REFRESH_INTERVAL);
         }
 
@@ -401,7 +400,8 @@
             if (refreshTimer) clearInterval(refreshTimer);
         }
 
-        async function loadDashboard(password, silent) {
+        async function loadDashboard(silent) {
+            if (!sessionToken) return;
             if (!silent) {
                 loginScreen.classList.add('hidden');
                 dashboard.classList.remove('hidden');
@@ -412,33 +412,38 @@
                 const res = await fetch('/api/admin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, date: getDateStr(selectedDate) })
+                    body: JSON.stringify({ token: sessionToken, date: getDateStr(selectedDate) })
                 });
 
                 const data = await res.json();
 
                 if (!res.ok) {
                     if (res.status === 401) {
-                        sessionStorage.removeItem('admin_password');
+                        sessionToken = null;
+                        sessionStorage.removeItem('admin_token');
                         loginScreen.classList.remove('hidden');
                         dashboard.classList.add('hidden');
                         stopAutoRefresh();
                     } else if (res.status === 429) {
                         dataError.textContent = 'Muitas requisições. Aguarde 60 segundos.';
                         dataError.classList.remove('hidden');
+                        setConnected(true);
                     } else {
                         dataError.textContent = data.error || 'Erro ao carregar dados.';
                         dataError.classList.remove('hidden');
+                        setConnected(true);
                     }
                     return;
                 }
 
+                setConnected(true);
                 renderDashboard(data);
                 lastUpdate.textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
             } catch {
+                setConnected(false);
                 if (!silent) {
                     loading.classList.add('hidden');
-                    dataError.textContent = 'Erro ao carregar dados.';
+                    dataError.textContent = 'Erro de conexão. Verifique sua internet.';
                     dataError.classList.remove('hidden');
                 }
             }
@@ -449,12 +454,9 @@
             dataError.classList.add('hidden');
             allBookings = data.bookings || [];
 
-            const tableTitle = document.querySelector('#table-wrapper .font-heading');
-            if (tableTitle) {
-                const d = new Date(getDateStr(selectedDate) + 'T12:00:00');
-                const dateLabel = isToday(selectedDate) ? 'Hoje' : d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-                tableTitle.textContent = `Agendamentos — ${dateLabel}`;
-            }
+            const d = new Date(getDateStr(selectedDate) + 'T12:00:00');
+            const dateLabel = isToday(selectedDate) ? 'Hoje' : d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+            tableTitle.textContent = `Agendamentos — ${dateLabel}`;
 
             const pending = allBookings.filter(b => b.status === 'pending').length;
             const confirmed = allBookings.filter(b => b.status === 'confirmed').length;
@@ -514,8 +516,9 @@
                 const tdStatus = document.createElement('td');
                 tdStatus.className = 'px-4 py-3';
                 const statusSpan = document.createElement('span');
-                statusSpan.className = `px-2 py-1 rounded-sm text-xs font-medium status-${b.status}`;
-                statusSpan.textContent = b.status === 'pending' ? 'Pendente' : b.status === 'confirmed' ? 'Confirmado' : 'Cancelado';
+                const safeStatus = VALID_STATUSES.includes(b.status) ? b.status : 'pending';
+                statusSpan.className = `px-2 py-1 rounded-sm text-xs font-medium status-${safeStatus}`;
+                statusSpan.textContent = safeStatus === 'pending' ? 'Pendente' : safeStatus === 'confirmed' ? 'Confirmado' : 'Cancelado';
                 tdStatus.appendChild(statusSpan);
 
                 const tdPrice = document.createElement('td');
@@ -574,18 +577,17 @@
         }
 
         async function confirmBooking(date, time) {
-            const password = sessionStorage.getItem('admin_password');
             try {
                 const res = await fetch('/api/confirm', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, date, time })
+                    body: JSON.stringify({ token: sessionToken, date, time })
                 });
 
                 const data = await res.json();
 
                 if (res.ok) {
-                    loadDashboard(password, true);
+                    loadDashboard(true);
 
                     if (data.booking) {
                         const b = data.booking;
@@ -598,6 +600,12 @@
                         const waUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`;
                         window.open(waUrl, '_blank');
                     }
+                } else if (res.status === 401) {
+                    sessionToken = null;
+                    sessionStorage.removeItem('admin_token');
+                    loginScreen.classList.remove('hidden');
+                    dashboard.classList.add('hidden');
+                    stopAutoRefresh();
                 } else {
                     alert(data.error || 'Erro ao confirmar.');
                 }
@@ -609,18 +617,24 @@
         async function cancelBooking(date, time, name) {
             if (!confirm(`Cancelar agendamento de ${name} às ${time}?`)) return;
 
-            const password = sessionStorage.getItem('admin_password');
             try {
                 const res = await fetch('/api/cancel', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, date, time })
+                    body: JSON.stringify({ token: sessionToken, date, time })
                 });
 
+                const data = await res.json();
+
                 if (res.ok) {
-                    loadDashboard(password, true);
+                    loadDashboard(true);
+                } else if (res.status === 401) {
+                    sessionToken = null;
+                    sessionStorage.removeItem('admin_token');
+                    loginScreen.classList.remove('hidden');
+                    dashboard.classList.add('hidden');
+                    stopAutoRefresh();
                 } else {
-                    const data = await res.json();
                     alert(data.error || 'Erro ao cancelar.');
                 }
             } catch {
