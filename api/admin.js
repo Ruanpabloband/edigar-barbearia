@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, destroyAdminSession, validateDate } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, destroyAdminSession, validateDate, getClientDate } from './_lib/shared.js';
 
 const SERVICES = {
     'Barba': 15,
@@ -31,13 +31,13 @@ export default async function handler(req, res) {
 
     const { token, date: reqDate, month: reqMonth, mode, search, logout } = body || {};
 
+    if (!await verifyAdminSession(token)) {
+        return res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' });
+    }
+
     if (logout) {
         await destroyAdminSession(token);
         return res.status(200).json({ success: true });
-    }
-
-    if (!await verifyAdminSession(token)) {
-        return res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' });
     }
 
     try {
@@ -87,7 +87,7 @@ export default async function handler(req, res) {
             });
         }
 
-        const targetDate = reqDate || new Date().toISOString().split('T')[0];
+        const targetDate = reqDate || getClientDate(req);
         if (!validateDate(targetDate)) {
             return res.status(400).json({ error: 'Data inválida.' });
         }

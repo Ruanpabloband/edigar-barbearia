@@ -15,7 +15,8 @@ export default async function handler(req, res) {
         return res.status(429).json({ error: 'Muitas requisições. Aguarde 60 segundos.' });
     }
 
-    const { token } = req.method === 'GET' ? req.query : {};
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : req.body?.token || req.query.token;
 
     if (!token || !await verifyAdminSession(token)) {
         return res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' });
@@ -89,7 +90,7 @@ export default async function handler(req, res) {
         };
 
         try {
-            await redis.set(key, expense, { ex: 7776000 });
+            await redis.set(key, expense);
             return res.status(200).json({ success: true, expense });
         } catch (error) {
             console.error('Erro ao criar despesa');

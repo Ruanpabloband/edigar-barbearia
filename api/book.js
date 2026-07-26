@@ -10,6 +10,21 @@ const DEFAULT_HOURS = {
     6: { start: 9, end: 18 }
 };
 
+const LUA_BOOK = `
+local slotKey = KEYS[1]
+local blockKey = KEYS[2]
+local dateKey = KEYS[3]
+local date = ARGV[1]
+local data = ARGV[2]
+local ttl = tonumber(ARGV[3])
+if redis.call('GET', blockKey) then return redis.error('BLOCKED') end
+if redis.call('SET', slotKey, data, 'NX', 'EX', ttl) then
+    redis.call('SADD', dateKey, date)
+    return 'OK'
+end
+return redis.error('OCCUPIED')
+`;
+
 async function isSlotWithinHours(dateStr, timeStr) {
     const [h] = timeStr.split(':').map(Number);
     const date = new Date(dateStr + 'T12:00:00');
@@ -76,27 +91,28 @@ export default async function handler(req, res) {
     const blockKey = `blocked:${date}:${time}`;
 
     try {
-        const isBlocked = await redis.get(blockKey);
-        if (isBlocked) {
-            return res.status(403).json({ error: 'Este horário está bloqueado.' });
-        }
-
-        const result = await redis.set(slotKey, {
+        const slotData = JSON.stringify({
             name: name.substring(0, 100),
             phone: phone.substring(0, 20),
             service,
             status: 'pending',
             bookedAt: Date.now()
-        }, { nx: true, ex: 172800 });
+        });
 
-        if (!result) {
+        const result = await redis.eval(LUA_BOOK, [slotKey, blockKey, 'booked_dates'], [date, slotData, '172800']);
+
+        if (result === 'OK') {
+            return res.status(200).json({ success: true, message: 'Horário reservado com sucesso!' });
+        }
+        return res.status(409).json({ error: 'Horário já ocupado. Escolha outro horário.' });
+    } catch (error) {
+        const msg = String(error.message || error);
+        if (msg.includes('BLOCKED')) {
+            return res.status(403).json({ error: 'Este horário está bloqueado.' });
+        }
+        if (msg.includes('OCCUPIED')) {
             return res.status(409).json({ error: 'Horário já ocupado. Escolha outro horário.' });
         }
-
-        await redis.sadd('booked_dates', date);
-
-        return res.status(200).json({ success: true, message: 'Horário reservado com sucesso!' });
-    } catch (error) {
         console.error('Erro ao reservar slot');
         return res.status(500).json({ error: 'Erro ao reservar horário. Tente novamente.' });
     }

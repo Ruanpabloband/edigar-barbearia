@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, validateDate } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, validateDate } from './_lib/shared.js';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
@@ -8,6 +8,12 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return handleOptions(res);
     if (req.method !== 'GET') return rejectMethod(res);
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+    const { withinLimit } = await checkRateLimit(ip, 'availability', 30);
+    if (!withinLimit) {
+        return res.status(429).json({ error: 'Muitas requisições. Aguarde 60 segundos.' });
+    }
 
     const { date } = req.query;
 

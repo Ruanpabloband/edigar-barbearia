@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, safeCompare, validateDate, validateTime } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime } from './_lib/shared.js';
 
 const LUA_CANCEL = `
 local key = KEYS[1]
@@ -17,21 +17,8 @@ if not isAdmin then
 end
 slot.status = 'cancelled'
 redis.call('SET', key, cjson.encode(slot), 'EX', 2592000)
-local keys = redis.call('KEYS', 'slot:' .. date .. ':*')
-local hasActive = false
-for _, k in ipairs(keys) do
-    if k ~= key then
-        local s = redis.call('GET', k)
-        if s then
-            local slotData = cjson.decode(s)
-            if slotData.status ~= 'cancelled' then
-                hasActive = true
-                break
-            end
-        end
-    end
-end
-if not hasActive then
+local remaining = tonumber(ARGV[4]) or 0
+if remaining <= 1 then
     redis.call('SREM', dateKey, date)
 end
 return 'OK'
@@ -77,7 +64,16 @@ export default async function handler(req, res) {
     const slotKey = `slot:${date}:${time}`;
 
     try {
-        const result = await redis.eval(LUA_CANCEL, [slotKey, 'booked_dates'], [date, isAdmin ? '1' : '0', phone || '']);
+        const prefix = `slot:${date}:`;
+        const keys = await redis.keys(`${prefix}*`);
+        let activeCount = 0;
+        for (const k of keys) {
+            if (k === slotKey) continue;
+            const s = await redis.get(k);
+            if (s && s.status !== 'cancelled') activeCount++;
+        }
+
+        const result = await redis.eval(LUA_CANCEL, [slotKey, 'booked_dates'], [date, isAdmin ? '1' : '0', phone || '', String(activeCount + 1)]);
         if (result === 'OK') {
             return res.status(200).json({ success: true, message: 'Agendamento cancelado.' });
         }

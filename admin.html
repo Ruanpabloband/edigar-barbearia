@@ -25,6 +25,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
     <link rel="icon" type="image/png" href="assets/images/logo.png">
     <style>
         html { scroll-behavior: smooth; }
@@ -62,7 +63,7 @@
                     Entrar
                 </button>
             </form>
-            <p class="text-center text-gray-600 text-xs mt-6">&copy; 2025 Edigar Barbearia</p>
+            <p class="text-center text-gray-600 text-xs mt-6">&copy; 2026 Edigar Barbearia</p>
         </div>
     </div>
 
@@ -207,49 +208,49 @@
                 </div>
                 <div id="hours-form" class="hidden mt-4 space-y-3">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                        <div class="flex flex-wrap items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
                             <span class="text-gray-400 text-sm w-20">Segunda</span>
                             <input type="time" id="he-1-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <span class="text-gray-500">-</span>
                             <input type="time" id="he-1-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-1" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
                         </div>
-                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                        <div class="flex flex-wrap items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
                             <span class="text-gray-400 text-sm w-20">Terça</span>
                             <input type="time" id="he-2-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <span class="text-gray-500">-</span>
                             <input type="time" id="he-2-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-2" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
                         </div>
-                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                        <div class="flex flex-wrap items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
                             <span class="text-gray-400 text-sm w-20">Quarta</span>
                             <input type="time" id="he-3-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <span class="text-gray-500">-</span>
                             <input type="time" id="he-3-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-3" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
                         </div>
-                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                        <div class="flex flex-wrap items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
                             <span class="text-gray-400 text-sm w-20">Quinta</span>
                             <input type="time" id="he-4-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <span class="text-gray-500">-</span>
                             <input type="time" id="he-4-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-4" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
                         </div>
-                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                        <div class="flex flex-wrap items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
                             <span class="text-gray-400 text-sm w-20">Sexta</span>
                             <input type="time" id="he-5-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <span class="text-gray-500">-</span>
                             <input type="time" id="he-5-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-5" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
                         </div>
-                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                        <div class="flex flex-wrap items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
                             <span class="text-gray-400 text-sm w-20">Sábado</span>
                             <input type="time" id="he-6-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <span class="text-gray-500">-</span>
                             <input type="time" id="he-6-end" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500">
                             <label class="flex items-center gap-1 ml-auto"><input type="checkbox" id="hc-6" class="accent-gold-500"><span class="text-gray-500 text-xs">Fechado</span></label>
                         </div>
-                        <div class="flex items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
+                        <div class="flex flex-wrap items-center gap-2 bg-dark-700 rounded-sm px-3 py-2">
                             <span class="text-gray-400 text-sm w-20">Domingo</span>
                             <input type="time" id="he-0-start" class="bg-dark-900 border border-dark-600 rounded-sm px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500" disabled>
                             <span class="text-gray-500">-</span>
@@ -287,7 +288,7 @@
 
             <!-- Filtros + Busca -->
             <div class="flex flex-col sm:flex-row gap-4 mb-6">
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
                     <button data-filter="all" class="filter-btn px-4 py-2 rounded-sm text-sm font-medium bg-gold-500 text-dark-900">Todos</button>
                     <button data-filter="pending" class="filter-btn px-4 py-2 rounded-sm text-sm font-medium bg-dark-700 text-gray-300 hover:bg-dark-600">Pendentes</button>
                     <button data-filter="confirmed" class="filter-btn px-4 py-2 rounded-sm text-sm font-medium bg-dark-700 text-gray-300 hover:bg-dark-600">Confirmados</button>
@@ -534,7 +535,6 @@
                 btn.classList.remove('bg-dark-700', 'text-gray-300');
                 btn.classList.add('bg-gold-500', 'text-dark-900');
             renderTable();
-            loadExpenses();
             });
         });
 
@@ -583,6 +583,7 @@
                 updateSelectedDateUI();
                 updateDateButtons();
                 renderDashboard(data);
+                fetchAndShowHours();
                 startAutoRefresh();
             } catch {
                 loginError.textContent = 'Erro de conexão.';
@@ -710,6 +711,7 @@
             }
 
             renderTable();
+            loadExpenses();
         }
 
         function renderTable() {
@@ -948,7 +950,9 @@
                 return;
             }
             try {
-                const res = await fetch(`/api/expenses?token=${sessionToken}&month=${selectedMonth}`);
+                const res = await fetch(`/api/expenses?month=${selectedMonth}`, {
+                    headers: { 'Authorization': `Bearer ${sessionToken}` }
+                });
                 const data = await res.json();
                 if (!res.ok) return;
 
@@ -1026,7 +1030,7 @@
                 if (res.ok) {
                     expenseDesc.value = '';
                     expenseAmount.value = '';
-                    expenseDate.value = '';
+                    expenseDate.value = getDateStr(new Date());
                     expenseForm.classList.add('hidden');
                     loadExpenses();
                 } else {
@@ -1163,7 +1167,7 @@
                 const startM = parseInt(startEl.value.split(':')[1]);
                 const endH = parseInt(endEl.value.split(':')[0]);
                 const endM = parseInt(endEl.value.split(':')[1]);
-                if (startH >= endH) {
+                if (startH * 60 + startM >= endH * 60 + endM) {
                     hoursFormError.textContent = `Horário de abertura deve ser antes do fechamento (${DAY_NAMES[day]}).`;
                     hoursFormError.classList.remove('hidden');
                     return;
@@ -1197,7 +1201,6 @@
             }
         });
 
-        fetchAndShowHours();
     })();
     </script>
 </body>

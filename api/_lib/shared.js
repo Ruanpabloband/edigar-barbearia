@@ -14,6 +14,7 @@ export function getCorsHeaders(origin) {
             'Access-Control-Allow-Origin': origin,
             'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Vary': 'Origin',
         };
     }
     return {};
@@ -58,7 +59,7 @@ export function safeCompare(a, b) {
 export async function verifyAdminSession(token) {
     if (!token) return false;
     const stored = await redis.get(`session:${token}`);
-    return stored === true;
+    return !!stored;
 }
 
 export async function createAdminSession() {
@@ -72,11 +73,17 @@ export async function destroyAdminSession(token) {
 }
 
 export function validateDate(date) {
-    return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date);
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+    const [y, m, d] = date.split('-').map(Number);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
 }
 
 export function validateTime(time) {
-    return typeof time === 'string' && /^\d{2}:\d{2}$/.test(time);
+    if (typeof time !== 'string' || !/^\d{2}:\d{2}$/.test(time)) return false;
+    const [h, m] = time.split(':').map(Number);
+    return h >= 0 && h <= 23 && m >= 0 && m <= 59;
 }
 
 export function getClientDate(req) {

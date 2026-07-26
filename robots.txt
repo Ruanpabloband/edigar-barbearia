@@ -2,4 +2,5 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /admin
+Disallow: /entrega.txt
 Sitemap: https://edigar-barbearia.vercel.app/sitemap.xml

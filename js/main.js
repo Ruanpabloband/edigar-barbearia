@@ -265,8 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookingForm = document.getElementById('booking-form');
     if (bookingForm) {
 
-        fetchHours();
-
         // Set min date to today (local time, not UTC)
         const dateInput = document.getElementById('date');
         const today = new Date();
@@ -287,10 +285,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const fetchHours = async () => {
             try {
                 const res = await fetch('/api/hours');
+                if (!res.ok) return;
                 const data = await res.json();
                 if (data.success) businessHours = data.hours;
             } catch {}
         };
+
+        fetchHours();
 
         const generateAllSlots = (dayOfWeek) => {
             const slots = [];
@@ -359,6 +360,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const phoneInput = document.getElementById('phone');
         phoneInput.addEventListener('input', (e) => {
             let value = e.target.value.replace(/\D/g, '');
+
+            if (value.startsWith('55') && value.length > 11) {
+                value = value.slice(2);
+            }
 
             if (value.length > 11) {
                 value = value.slice(0, 11);
@@ -464,9 +469,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const myBookingsError = document.getElementById('my-bookings-error');
     const myBookingsList = document.getElementById('my-bookings-list');
 
+    let lastLookupPhone = '';
+
     if (myBookingsBtn && myPhoneInput) {
         myPhoneInput.addEventListener('input', (e) => {
             let value = e.target.value.replace(/\D/g, '');
+            if (value.startsWith('55') && value.length > 11) {
+                value = value.slice(2);
+            }
             if (value.length > 11) value = value.slice(0, 11);
             if (value.length > 6) {
                 value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
@@ -492,6 +502,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        lastLookupPhone = phone;
+
         myBookingsLoading.classList.remove('hidden');
         myBookingsEmpty.classList.add('hidden');
         myBookingsError.classList.add('hidden');
@@ -512,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (data.bookings.length === 0) {
+            if (!data.bookings || data.bookings.length === 0) {
                 myBookingsEmpty.classList.remove('hidden');
                 return;
             }
@@ -567,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const cancelBtn = document.createElement('button');
                 cancelBtn.className = 'bg-red-900/50 text-red-300 px-4 py-2 rounded-sm text-xs font-medium hover:bg-red-900 transition-colors';
                 cancelBtn.textContent = 'Cancelar';
-                cancelBtn.addEventListener('click', () => cancelMyBooking(b.date, b.time, b.name, myPhoneInput.value.trim()));
+                cancelBtn.addEventListener('click', () => cancelMyBooking(b.date, b.time, b.name, lastLookupPhone));
                 actions.appendChild(cancelBtn);
             }
 

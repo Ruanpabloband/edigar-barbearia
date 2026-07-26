@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, safeCompare, createAdminSession } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, safeCompare, createAdminSession, getClientDate } from './_lib/shared.js';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     }
 
     const { password, date: reqDate } = body || {};
-    const targetDate = reqDate || new Date().toISOString().split('T')[0];
+    const targetDate = reqDate || getClientDate(req);
 
     if (!password || !safeCompare(password, process.env.ADMIN_PASSWORD)) {
         return res.status(401).json({ error: 'Senha incorreta.' });
@@ -33,7 +33,6 @@ export default async function handler(req, res) {
 
     try {
         const keys = await redis.keys(`slot:${targetDate}:*`);
-        const prefix = `slot:${targetDate}:*`;
         const bookings = [];
         let totalRevenue = 0;
 
@@ -79,6 +78,6 @@ export default async function handler(req, res) {
         });
     } catch (error) {
         console.error('Erro login:', error.message);
-        return res.status(200).json({ success: true, token, today: targetDate, bookings: [], totalBookings: 0, totalRevenue: 0 });
+        return res.status(500).json({ error: 'Erro ao carregar dados. Faça login novamente.' });
     }
 }
