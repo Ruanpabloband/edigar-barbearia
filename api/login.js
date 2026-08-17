@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, safeCompare, createAdminSession, getClientDate, scanKeys } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, safeCompare, createAdminSession, getClientDate, scanKeys, mget } from './_lib/shared.js';
 import { SERVICES } from './_lib/config.js';
 
 export default async function handler(req, res) {
@@ -41,24 +41,27 @@ export default async function handler(req, res) {
             await redis.srem('booked_dates', targetDate).catch(() => {});
         }
 
-        for (const key of keys) {
-            const time = key.replace(`slot:${targetDate}:`, '');
-            const raw = await redis.get(key);
-            if (raw) {
-                const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-                if (data.status !== 'cancelled') {
-                    const price = SERVICES[data.service] || 0;
-                    bookings.push({
-                        date: targetDate,
-                        time,
-                        service: data.service,
-                        name: data.name,
-                        phone: data.phone,
-                        price,
-                        status: data.status,
-                        bookedAt: data.bookedAt
-                    });
-                    totalRevenue += price;
+        if (keys.length > 0) {
+            const values = await mget(keys);
+            for (let i = 0; i < keys.length; i++) {
+                const time = keys[i].replace(`slot:${targetDate}:`, '');
+                const raw = values[i];
+                if (raw) {
+                    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    if (data.status !== 'cancelled') {
+                        const price = SERVICES[data.service] || 0;
+                        bookings.push({
+                            date: targetDate,
+                            time,
+                            service: data.service,
+                            name: data.name,
+                            phone: data.phone,
+                            price,
+                            status: data.status,
+                            bookedAt: data.bookedAt
+                        });
+                        totalRevenue += price;
+                    }
                 }
             }
         }

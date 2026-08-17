@@ -106,4 +106,13 @@ export async function scanKeys(pattern) {
     return keys;
 }
 
+export async function mget(keys) {
+    if (keys.length === 0) return [];
+    const pipeline = redis.pipeline();
+    for (const key of keys) {
+        pipeline.get(key);
+    }
+    return pipeline.exec();
+}
+
 export { redis };

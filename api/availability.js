@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, validateDate, scanKeys } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, validateDate, scanKeys, mget } from './_lib/shared.js';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
@@ -26,12 +26,15 @@ export default async function handler(req, res) {
         const keys = await scanKeys(`${prefix}*`);
         const bookedSlots = [];
 
-        for (const key of keys) {
-            const raw = await redis.get(key);
-            if (raw) {
-                const slot = typeof raw === 'string' ? JSON.parse(raw) : raw;
-                if (slot.status !== 'cancelled') {
-                    bookedSlots.push(key.replace(prefix, ''));
+        if (keys.length > 0) {
+            const values = await mget(keys);
+            for (let i = 0; i < keys.length; i++) {
+                const raw = values[i];
+                if (raw) {
+                    const slot = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    if (slot.status !== 'cancelled') {
+                        bookedSlots.push(keys[i].replace(prefix, ''));
+                    }
                 }
             }
         }

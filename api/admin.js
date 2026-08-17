@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, destroyAdminSession, validateDate, getClientDate, scanKeys } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, destroyAdminSession, validateDate, getClientDate, scanKeys, mget } from './_lib/shared.js';
 import { SERVICES } from './_lib/config.js';
 
 export default async function handler(req, res) {
@@ -44,19 +44,22 @@ export default async function handler(req, res) {
 
             for (const dateStr of monthDates) {
                 const keys = await scanKeys(`slot:${dateStr}:*`);
-                for (const key of keys) {
-                    const time = key.replace(`slot:${dateStr}:`, '');
-                    const raw = await redis.get(key);
-                    if (raw) {
-                        const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-                        if (data.status !== 'cancelled') {
-                            const price = SERVICES[data.service] || 0;
-                            const matchSearch = !search ||
-                                (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
-                                (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
-                            if (matchSearch) {
-                                bookings.push({ date: dateStr, time, service: data.service, name: data.name, phone: data.phone, price, status: data.status, bookedAt: data.bookedAt });
-                                totalRevenue += price;
+                if (keys.length > 0) {
+                    const values = await mget(keys);
+                    for (let i = 0; i < keys.length; i++) {
+                        const time = keys[i].replace(`slot:${dateStr}:`, '');
+                        const raw = values[i];
+                        if (raw) {
+                            const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                            if (data.status !== 'cancelled') {
+                                const price = SERVICES[data.service] || 0;
+                                const matchSearch = !search ||
+                                    (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                                    (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
+                                if (matchSearch) {
+                                    bookings.push({ date: dateStr, time, service: data.service, name: data.name, phone: data.phone, price, status: data.status, bookedAt: data.bookedAt });
+                                    totalRevenue += price;
+                                }
                             }
                         }
                     }
@@ -97,30 +100,33 @@ export default async function handler(req, res) {
             await redis.srem('booked_dates', targetDate).catch(() => {});
         }
 
-        for (const key of keys) {
-            const time = key.replace(`slot:${targetDate}:`, '');
-            const raw = await redis.get(key);
+        if (keys.length > 0) {
+            const values = await mget(keys);
+            for (let i = 0; i < keys.length; i++) {
+                const time = keys[i].replace(`slot:${targetDate}:`, '');
+                const raw = values[i];
 
-            if (raw) {
-                const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-                if (data.status !== 'cancelled') {
-                    const price = SERVICES[data.service] || 0;
-                    const matchSearch = !search ||
-                        (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
-                        (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
+                if (raw) {
+                    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    if (data.status !== 'cancelled') {
+                        const price = SERVICES[data.service] || 0;
+                        const matchSearch = !search ||
+                            (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                            (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
 
-                    if (matchSearch) {
-                        bookings.push({
-                            date: targetDate,
-                            time,
-                            service: data.service,
-                            name: data.name,
-                            phone: data.phone,
-                            price,
-                            status: data.status,
-                            bookedAt: data.bookedAt
-                        });
-                        totalRevenue += price;
+                        if (matchSearch) {
+                            bookings.push({
+                                date: targetDate,
+                                time,
+                                service: data.service,
+                                name: data.name,
+                                phone: data.phone,
+                                price,
+                                status: data.status,
+                                bookedAt: data.bookedAt
+                            });
+                            totalRevenue += price;
+                        }
                     }
                 }
             }
