@@ -95,4 +95,15 @@ export function getClientDate(req) {
     }
 }
 
+export async function scanKeys(pattern) {
+    const keys = [];
+    let cursor = 0;
+    do {
+        const [nextCursor, batch] = await redis.scan(cursor, { match: pattern, count: 100 });
+        cursor = nextCursor;
+        keys.push(...batch);
+    } while (cursor !== 0);
+    return keys;
+}
+
 export { redis };

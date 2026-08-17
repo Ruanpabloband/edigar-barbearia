@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, safeCompare, createAdminSession, getClientDate } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, safeCompare, createAdminSession, getClientDate, scanKeys } from './_lib/shared.js';
 import { SERVICES } from './_lib/config.js';
 
 export default async function handler(req, res) {
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     const token = await createAdminSession();
 
     try {
-        const keys = await redis.keys(`slot:${targetDate}:*`);
+        const keys = await scanKeys(`slot:${targetDate}:*`);
         const bookings = [];
         let totalRevenue = 0;
 
@@ -43,20 +43,23 @@ export default async function handler(req, res) {
 
         for (const key of keys) {
             const time = key.replace(`slot:${targetDate}:`, '');
-            const data = await redis.get(key);
-            if (data && data.status !== 'cancelled') {
-                const price = SERVICES[data.service] || 0;
-                bookings.push({
-                    date: targetDate,
-                    time,
-                    service: data.service,
-                    name: data.name,
-                    phone: data.phone,
-                    price,
-                    status: data.status,
-                    bookedAt: data.bookedAt
-                });
-                totalRevenue += price;
+            const raw = await redis.get(key);
+            if (raw) {
+                const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (data.status !== 'cancelled') {
+                    const price = SERVICES[data.service] || 0;
+                    bookings.push({
+                        date: targetDate,
+                        time,
+                        service: data.service,
+                        name: data.name,
+                        phone: data.phone,
+                        price,
+                        status: data.status,
+                        bookedAt: data.bookedAt
+                    });
+                    totalRevenue += price;
+                }
             }
         }
 

@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime, scanKeys } from './_lib/shared.js';
 
 const LUA_CANCEL = `
 local key = KEYS[1]
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
 
     try {
         const prefix = `slot:${date}:`;
-        const keys = await redis.keys(`${prefix}*`);
+        const keys = await scanKeys(`${prefix}*`);
         let activeCount = 0;
         for (const k of keys) {
             if (k === slotKey) continue;

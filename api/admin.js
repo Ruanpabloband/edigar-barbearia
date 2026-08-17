@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, destroyAdminSession, validateDate, getClientDate } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, destroyAdminSession, validateDate, getClientDate, scanKeys } from './_lib/shared.js';
 import { SERVICES } from './_lib/config.js';
 
 export default async function handler(req, res) {
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
             let totalRevenue = 0;
 
             for (const dateStr of monthDates) {
-                const keys = await redis.keys(`slot:${dateStr}:*`);
+                const keys = await scanKeys(`slot:${dateStr}:*`);
                 for (const key of keys) {
                     const time = key.replace(`slot:${dateStr}:`, '');
                     const raw = await redis.get(key);
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
 
             const blocked = [];
             for (const dateStr of monthDates) {
-                const bkKeys = await redis.keys(`blocked:${dateStr}:*`);
+                const bkKeys = await scanKeys(`blocked:${dateStr}:*`);
                 for (const k of bkKeys) {
                     blocked.push({ date: dateStr, time: k.replace(`blocked:${dateStr}:`, ''), status: 'blocked' });
                 }
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Data inválida.' });
         }
 
-        const keys = await redis.keys(`slot:${targetDate}:*`);
+        const keys = await scanKeys(`slot:${targetDate}:*`);
         const bookings = [];
         let totalRevenue = 0;
 
@@ -128,7 +128,7 @@ export default async function handler(req, res) {
 
         bookings.sort((a, b) => a.time.localeCompare(b.time));
 
-        const blockedKeys = await redis.keys(`blocked:${targetDate}:*`);
+        const blockedKeys = await scanKeys(`blocked:${targetDate}:*`);
         const blocked = blockedKeys.map(k => ({
             date: targetDate,
             time: k.replace(`blocked:${targetDate}:`, ''),
