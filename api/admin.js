@@ -1,11 +1,5 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, destroyAdminSession, validateDate, getClientDate } from './_lib/shared.js';
-
-const SERVICES = {
-    'Barba': 15,
-    'Combo Corte + Barba': 25,
-    'Degradê': 20,
-    'Corte Social': 20
-};
+import { SERVICES } from './_lib/config.js';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';

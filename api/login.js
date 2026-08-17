@@ -1,4 +1,5 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, safeCompare, createAdminSession, getClientDate } from './_lib/shared.js';
+import { SERVICES } from './_lib/config.js';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
@@ -39,13 +40,6 @@ export default async function handler(req, res) {
         if (keys.length === 0) {
             await redis.srem('booked_dates', targetDate).catch(() => {});
         }
-
-        const SERVICES = {
-            'Barba': 15,
-            'Combo Corte + Barba': 25,
-            'Degradê': 20,
-            'Corte Social': 20
-        };
 
         for (const key of keys) {
             const time = key.replace(`slot:${targetDate}:`, '');

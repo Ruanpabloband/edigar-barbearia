@@ -345,10 +345,11 @@
         </main>
     </div>
 
+    <script src="js/config.js"></script>
     <script>
     (function() {
-        const SERVICES = { 'Barba': 15, 'Combo Corte + Barba': 25, 'Degradê': 20, 'Corte Social': 20 };
-        const PIX = { key: 'edigarsouzabarbearia', name: 'Edigar Souza', bank: 'Banco do Brasil' };
+        const SERVICES = Object.fromEntries(CONFIG.services.map(s => [s.name, s.price]));
+        const PIX = CONFIG.pix;
         const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'blocked'];
         const REFRESH_INTERVAL = 30000;
         let currentFilter = 'all';

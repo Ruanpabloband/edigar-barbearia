@@ -1,6 +1,5 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime } from './_lib/shared.js';
-
-const SERVICES = { 'Barba': 15, 'Combo Corte + Barba': 25, 'Degradê': 20, 'Corte Social': 20 };
+import { SERVICES } from './_lib/config.js';
 
 const LUA_CONFIRM = `
 local key = KEYS[1]

@@ -1,4 +1,5 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, validateDate, validateTime, getClientDate } from './_lib/shared.js';
+import { ALLOWED_SERVICES } from './_lib/config.js';
 
 const DEFAULT_HOURS = {
     0: null,
@@ -73,7 +74,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Formato de data ou horário inválido.' });
     }
 
-    const ALLOWED_SERVICES = ['Barba', 'Combo Corte + Barba', 'Degradê', 'Corte Social'];
     if (!ALLOWED_SERVICES.includes(service)) {
         return res.status(400).json({ error: 'Serviço inválido.' });
     }
