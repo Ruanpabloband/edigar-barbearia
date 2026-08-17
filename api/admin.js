@@ -52,15 +52,18 @@ export default async function handler(req, res) {
                 const keys = await redis.keys(`slot:${dateStr}:*`);
                 for (const key of keys) {
                     const time = key.replace(`slot:${dateStr}:`, '');
-                    const data = await redis.get(key);
-                    if (data && data.status !== 'cancelled') {
-                        const price = SERVICES[data.service] || 0;
-                        const matchSearch = !search ||
-                            (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
-                            (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
-                        if (matchSearch) {
-                            bookings.push({ date: dateStr, time, service: data.service, name: data.name, phone: data.phone, price, status: data.status, bookedAt: data.bookedAt });
-                            totalRevenue += price;
+                    const raw = await redis.get(key);
+                    if (raw) {
+                        const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                        if (data.status !== 'cancelled') {
+                            const price = SERVICES[data.service] || 0;
+                            const matchSearch = !search ||
+                                (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                                (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
+                            if (matchSearch) {
+                                bookings.push({ date: dateStr, time, service: data.service, name: data.name, phone: data.phone, price, status: data.status, bookedAt: data.bookedAt });
+                                totalRevenue += price;
+                            }
                         }
                     }
                 }
@@ -102,26 +105,29 @@ export default async function handler(req, res) {
 
         for (const key of keys) {
             const time = key.replace(`slot:${targetDate}:`, '');
-            const data = await redis.get(key);
+            const raw = await redis.get(key);
 
-            if (data && data.status !== 'cancelled') {
-                const price = SERVICES[data.service] || 0;
-                const matchSearch = !search ||
-                    (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
-                    (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
+            if (raw) {
+                const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (data.status !== 'cancelled') {
+                    const price = SERVICES[data.service] || 0;
+                    const matchSearch = !search ||
+                        (data.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                        (data.phone || '').replace(/\D/g, '').includes(search.replace(/\D/g, ''));
 
-                if (matchSearch) {
-                    bookings.push({
-                        date: targetDate,
-                        time,
-                        service: data.service,
-                        name: data.name,
-                        phone: data.phone,
-                        price,
-                        status: data.status,
-                        bookedAt: data.bookedAt
-                    });
-                    totalRevenue += price;
+                    if (matchSearch) {
+                        bookings.push({
+                            date: targetDate,
+                            time,
+                            service: data.service,
+                            name: data.name,
+                            phone: data.phone,
+                            price,
+                            status: data.status,
+                            bookedAt: data.bookedAt
+                        });
+                        totalRevenue += price;
+                    }
                 }
             }
         }

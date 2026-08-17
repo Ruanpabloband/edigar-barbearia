@@ -69,8 +69,11 @@ export default async function handler(req, res) {
         let activeCount = 0;
         for (const k of keys) {
             if (k === slotKey) continue;
-            const s = await redis.get(k);
-            if (s && s.status !== 'cancelled') activeCount++;
+            const raw = await redis.get(k);
+            if (raw) {
+                const s = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (s.status !== 'cancelled') activeCount++;
+            }
         }
 
         const result = await redis.eval(LUA_CANCEL, [slotKey, 'booked_dates'], [date, isAdmin ? '1' : '0', phone || '', String(activeCount + 1)]);

@@ -26,5 +26,8 @@ Thumbs.db
 # Server data
 server/data/
 
+# Sensitive files
+entrega.txt
+
 .vercel
 .env*

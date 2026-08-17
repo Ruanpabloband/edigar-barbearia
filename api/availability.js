@@ -27,9 +27,12 @@ export default async function handler(req, res) {
         const bookedSlots = [];
 
         for (const key of keys) {
-            const slot = await redis.get(key);
-            if (slot && slot.status !== 'cancelled') {
-                bookedSlots.push(key.replace(prefix, ''));
+            const raw = await redis.get(key);
+            if (raw) {
+                const slot = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (slot.status !== 'cancelled') {
+                    bookedSlots.push(key.replace(prefix, ''));
+                }
             }
         }
 
