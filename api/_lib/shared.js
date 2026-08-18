@@ -7,9 +7,12 @@ const redis = new Redis({
 });
 
 const ALLOWED_ORIGINS = ['https://edigar-barbearia.vercel.app'];
+const isDev = process.env.NODE_ENV !== 'production';
 
 export function getCorsHeaders(origin) {
-    if (ALLOWED_ORIGINS.includes(origin)) {
+    const allowed = ALLOWED_ORIGINS.includes(origin) ||
+        (isDev && origin && origin.startsWith('http://localhost'));
+    if (allowed) {
         return {
             'Access-Control-Allow-Origin': origin,
             'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
