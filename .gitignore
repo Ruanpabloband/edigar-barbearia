@@ -11,6 +11,7 @@ npm-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+!.env.example
 
 # Vercel
 .vercel/
@@ -30,4 +31,3 @@ server/data/
 entrega.txt
 
 .vercel
-.env*
