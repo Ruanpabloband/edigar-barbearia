@@ -1,4 +1,5 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime } from './_lib/shared.js';
+import { TTL_CONFIRMED } from './_lib/config.js';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
@@ -44,7 +45,7 @@ export default async function handler(req, res) {
             if (existing && existing.status !== 'cancelled') {
                 return res.status(409).json({ error: 'Horário já possui agendamento ativo.' });
             }
-            await redis.set(blockKey, { blocked: true, blockedAt: Date.now() }, { ex: 2592000 });
+            await redis.set(blockKey, { blocked: true, blockedAt: Date.now() }, { ex: TTL_CONFIRMED });
             await redis.sadd('blocked_dates', date).catch(() => {});
             return res.status(200).json({ success: true, message: 'Horário bloqueado.' });
         } else {

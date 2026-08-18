@@ -1,4 +1,5 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime, scanKeys, mget } from './_lib/shared.js';
+import { TTL_CONFIRMED } from './_lib/config.js';
 
 const LUA_CANCEL = `
 local key = KEYS[1]
@@ -6,6 +7,7 @@ local dateKey = KEYS[2]
 local date = ARGV[1]
 local isAdmin = ARGV[2] == '1'
 local phone = ARGV[3]
+local ttl = tonumber(ARGV[4])
 local data = redis.call('GET', key)
 if not data then return redis.error('NOT_FOUND') end
 local slot = cjson.decode(data)
@@ -16,8 +18,8 @@ if not isAdmin then
     if cleanPhone ~= slotPhone then return redis.error('PHONE_MISMATCH') end
 end
 slot.status = 'cancelled'
-redis.call('SET', key, cjson.encode(slot), 'EX', 2592000)
-local remaining = tonumber(ARGV[4]) or 0
+redis.call('SET', key, cjson.encode(slot), 'EX', ttl)
+local remaining = tonumber(ARGV[5]) or 0
 if remaining <= 1 then
     redis.call('SREM', dateKey, date)
 end
@@ -79,7 +81,7 @@ export default async function handler(req, res) {
             }
         }
 
-        const result = await redis.eval(LUA_CANCEL, [slotKey, 'booked_dates'], [date, isAdmin ? '1' : '0', phone || '', String(activeCount + 1)]);
+        const result = await redis.eval(LUA_CANCEL, [slotKey, 'booked_dates'], [date, isAdmin ? '1' : '0', phone || '', String(TTL_CONFIRMED), String(activeCount + 1)]);
         if (result === 'OK') {
             return res.status(200).json({ success: true, message: 'Agendamento cancelado.' });
         }

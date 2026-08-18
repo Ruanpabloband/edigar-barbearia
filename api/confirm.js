@@ -1,15 +1,16 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime } from './_lib/shared.js';
-import { SERVICES } from './_lib/config.js';
+import { SERVICES, TTL_CONFIRMED } from './_lib/config.js';
 
 const LUA_CONFIRM = `
 local key = KEYS[1]
+local ttl = tonumber(ARGV[1])
 local data = redis.call('GET', key)
 if not data then return redis.error('NOT_FOUND') end
 local slot = cjson.decode(data)
 if slot.status == 'confirmed' then return redis.error('ALREADY_CONFIRMED') end
 if slot.status == 'cancelled' then return redis.error('CANCELLED') end
 slot.status = 'confirmed'
-redis.call('SET', key, cjson.encode(slot), 'EX', 2592000)
+redis.call('SET', key, cjson.encode(slot), 'EX', ttl)
 return 'OK'
 `;
 
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
     const slotKey = `slot:${date}:${time}`;
 
     try {
-        const result = await redis.eval(LUA_CONFIRM, [slotKey]);
+        const result = await redis.eval(LUA_CONFIRM, [slotKey], [String(TTL_CONFIRMED)]);
         if (result === 'OK') {
             const slotData = await redis.get(slotKey);
             const slot = typeof slotData === 'string' ? JSON.parse(slotData) : slotData;

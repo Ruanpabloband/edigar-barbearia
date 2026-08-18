@@ -1,5 +1,5 @@
 import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, validateDate, validateTime, getClientDate } from './_lib/shared.js';
-import { ALLOWED_SERVICES } from './_lib/config.js';
+import { ALLOWED_SERVICES, TTL_PENDING } from './_lib/config.js';
 
 const DEFAULT_HOURS = {
     0: null,
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
             bookedAt: Date.now()
         });
 
-        const result = await redis.eval(LUA_BOOK, [slotKey, blockKey, 'booked_dates'], [date, slotData, '172800']);
+        const result = await redis.eval(LUA_BOOK, [slotKey, blockKey, 'booked_dates'], [date, slotData, String(TTL_PENDING)]);
 
         if (result === 'OK') {
             return res.status(200).json({ success: true, message: 'Horário reservado com sucesso!' });
