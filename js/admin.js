@@ -196,9 +196,7 @@
     });
 
     if (sessionToken) {
-        updateSelectedDateUI();
-        updateDateButtons();
-        loadDashboard(false);
+        loadDashboard(true);
     }
 
     loginForm.addEventListener('submit', async (e) => {
@@ -315,15 +313,26 @@
                 return;
             }
 
+            if (silent) {
+                loginScreen.classList.add('hidden');
+                dashboard.classList.remove('hidden');
+                updateSelectedDateUI();
+                updateDateButtons();
+                fetchAndShowHours();
+                startAutoRefresh();
+            }
             setConnected(true);
             renderDashboard(data);
             lastUpdate.textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
         } catch {
-            setConnected(false);
             if (!silent) {
+                setConnected(false);
                 loading.classList.add('hidden');
                 dataError.textContent = 'Erro de conexão. Verifique sua internet.';
                 dataError.classList.remove('hidden');
+            } else {
+                sessionToken = null;
+                sessionStorage.removeItem('admin_token');
             }
         }
     }
