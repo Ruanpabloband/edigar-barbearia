@@ -18,6 +18,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return handleOptions(res);
 
+    try {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
     const { withinLimit } = await checkRateLimit(ip, 'hours', 30);
     if (!withinLimit) {
@@ -73,4 +74,8 @@ export default async function handler(req, res) {
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
+    } catch (error) {
+        console.error('Erro interno no handler hours:', error);
+        if (!res.headersSent) return res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
 }

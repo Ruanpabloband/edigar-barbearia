@@ -33,6 +33,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'OPTIONS') return handleOptions(res);
+    try {
     if (req.method !== 'POST') return rejectMethod(res);
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
@@ -93,5 +94,9 @@ export default async function handler(req, res) {
         if (msg.includes('PHONE_MISMATCH')) return res.status(403).json({ error: 'Telefone não confere com o agendamento.' });
         console.error('Erro ao cancelar');
         return res.status(500).json({ error: 'Erro ao cancelar. Tente novamente.' });
+    }
+    } catch (error) {
+        console.error('Erro interno no handler cancel:', error);
+        if (!res.headersSent) return res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 }

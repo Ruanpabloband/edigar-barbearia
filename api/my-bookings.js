@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, getClientDate } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, getClientDate, scanKeys } from './_lib/shared.js';
 
 export default async function handler(req, res) {
     const origin = req.headers.origin || '';
@@ -7,6 +7,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'OPTIONS') return handleOptions(res);
+    try {
     if (req.method !== 'GET') return rejectMethod(res);
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
@@ -33,7 +34,7 @@ export default async function handler(req, res) {
         for (const date of bookedDates) {
             if (date < today) continue;
             const prefix = `slot:${date}:`;
-            const keys = await redis.keys(`${prefix}*`);
+            const keys = await scanKeys(`${prefix}*`);
             for (const key of keys) {
                 const slot = await redis.get(key);
                 if (slot && (slot.phone || '').replace(/\D/g, '') === cleanPhone && slot.status !== 'cancelled') {
@@ -58,5 +59,9 @@ export default async function handler(req, res) {
     } catch (error) {
         console.error('Erro ao buscar reservas');
         return res.status(500).json({ error: 'Erro ao buscar reservas. Tente novamente.' });
+    }
+    } catch (error) {
+        console.error('Erro interno no handler my-bookings:', error);
+        if (!res.headersSent) return res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 }

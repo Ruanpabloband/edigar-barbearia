@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, validateTime, scanKeys } from './_lib/shared.js';
 import { TTL_CONFIRMED } from './_lib/config.js';
 
 export default async function handler(req, res) {
@@ -8,6 +8,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'OPTIONS') return handleOptions(res);
+    try {
     if (req.method !== 'POST') return rejectMethod(res);
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true, message: 'Horário bloqueado.' });
         } else {
             await redis.del(blockKey);
-            const remaining = await redis.keys(`blocked:${date}:*`);
+            const remaining = await scanKeys(`blocked:${date}:*`);
             if (remaining.length === 0) {
                 await redis.srem('blocked_dates', date).catch(() => {});
             }
@@ -59,5 +60,9 @@ export default async function handler(req, res) {
     } catch (error) {
         console.error('Erro ao bloquear/desbloquear horário');
         return res.status(500).json({ error: 'Erro ao processar. Tente novamente.' });
+    }
+    } catch (error) {
+        console.error('Erro interno no handler block:', error);
+        if (!res.headersSent) return res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 }

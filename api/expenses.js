@@ -1,4 +1,4 @@
-import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate } from './_lib/shared.js';
+import { redis, getCorsHeaders, handleOptions, rejectMethod, checkRateLimit, verifyAdminSession, validateDate, scanKeys } from './_lib/shared.js';
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
@@ -9,6 +9,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return handleOptions(res);
 
+    try {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
     const { withinLimit } = await checkRateLimit(ip, 'expenses', 30);
     if (!withinLimit) {
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
         }
 
         try {
-            const keys = await redis.keys(`expense:${month}:*`);
+            const keys = await scanKeys(`expense:${month}:*`);
             const expenses = [];
             let totalExpenses = 0;
 
@@ -122,4 +123,8 @@ export default async function handler(req, res) {
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
+    } catch (error) {
+        console.error('Erro interno no handler expenses:', error);
+        if (!res.headersSent) return res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
 }

@@ -8,6 +8,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'OPTIONS') return handleOptions(res);
+    try {
     if (req.method !== 'POST') return rejectMethod(res);
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
@@ -165,5 +166,9 @@ export default async function handler(req, res) {
     } catch (error) {
         console.error('Erro ao buscar dados admin');
         return res.status(500).json({ error: 'Erro ao carregar dados.' });
+    }
+    } catch (error) {
+        console.error('Erro interno no handler admin:', error);
+        if (!res.headersSent) return res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 }

@@ -21,6 +21,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'OPTIONS') return handleOptions(res);
+    try {
     if (req.method !== 'POST') return rejectMethod(res);
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
@@ -82,5 +83,9 @@ export default async function handler(req, res) {
         if (msg.includes('CANCELLED')) return res.status(400).json({ error: 'Agendamento já cancelado.' });
         console.error('Erro ao confirmar');
         return res.status(500).json({ error: 'Erro ao confirmar. Tente novamente.' });
+    }
+    } catch (error) {
+        console.error('Erro interno no handler confirm:', error);
+        if (!res.headersSent) return res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 }

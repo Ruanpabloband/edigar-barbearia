@@ -215,7 +215,13 @@
                 body: JSON.stringify({ password, date: getDateStr(selectedDate) })
             });
 
-            const data = await res.json();
+            let data;
+            try {
+                data = await res.json();
+            } catch {
+                console.error('Login: resposta não é JSON:', await res.text().catch(() => ''));
+                throw new Error('Servidor retornou resposta inválida.');
+            }
 
             if (!res.ok) {
                 loginError.textContent = data.error || 'Senha incorreta.';
@@ -235,8 +241,9 @@
             renderDashboard(data);
             fetchAndShowHours();
             startAutoRefresh();
-        } catch {
-            loginError.textContent = 'Erro de conexão.';
+        } catch (err) {
+            console.error('Erro login:', err);
+            loginError.textContent = err.message || 'Erro de conexão.';
             loginError.classList.remove('hidden');
             loginBtn.disabled = false;
             loginBtn.textContent = 'Entrar';
@@ -292,7 +299,13 @@
                 body: JSON.stringify(payload)
             });
 
-            const data = await res.json();
+            let data;
+            try {
+                data = await res.json();
+            } catch {
+                console.error('Admin: resposta não é JSON:', await res.text().catch(() => ''));
+                throw new Error('Servidor retornou resposta inválida.');
+            }
 
             if (!res.ok) {
                 if (res.status === 401) {
@@ -324,11 +337,12 @@
             setConnected(true);
             renderDashboard(data);
             lastUpdate.textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
-        } catch {
+        } catch (err) {
+            console.error('Erro dashboard:', err);
             if (!silent) {
                 setConnected(false);
                 loading.classList.add('hidden');
-                dataError.textContent = 'Erro de conexão. Verifique sua internet.';
+                dataError.textContent = err.message || 'Erro de conexão. Verifique sua internet.';
                 dataError.classList.remove('hidden');
             } else {
                 sessionToken = null;
