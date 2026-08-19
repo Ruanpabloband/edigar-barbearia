@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     }
 
     if (logout) {
-        await destroyAdminSession(token);
+        await destroyAdminSession(token).catch(() => {});
         return res.status(200).json({ success: true });
     }
 

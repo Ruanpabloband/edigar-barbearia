@@ -30,9 +30,8 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Senha incorreta.' });
     }
 
-    const token = await createAdminSession();
-
     try {
+        const token = await createAdminSession();
         const keys = await scanKeys(`slot:${targetDate}:*`);
         const bookings = [];
         let totalRevenue = 0;
